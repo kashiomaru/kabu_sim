@@ -36,23 +36,55 @@ export default function Home() {
   };
 
   const handleStepBackMinute = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    // 1分（60秒）を引く
+    const newTimestamp = currentTimestamp - 60;
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
     setIndicator('1分戻し');
-    // 1分戻しのロジックをここに追加
   };
 
   const handleStepBackSecond = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    // 1秒を引く
+    const newTimestamp = currentTimestamp - 1;
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
     setIndicator('1秒戻し');
-    // 1秒戻しのロジックをここに追加
   };
 
   const handleStepForwardSecond = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    // 1秒を足す
+    const newTimestamp = currentTimestamp + 1;
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
     setIndicator('1秒送り');
-    // 1秒送りのロジックをここに追加
   };
 
   const handleStepForwardMinute = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    // 1分（60秒）を足す
+    const newTimestamp = currentTimestamp + 60;
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
     setIndicator('1分送り');
-    // 1分送りのロジックをここに追加
   };
 
   // CSVをパースする関数
@@ -325,6 +357,41 @@ export default function Home() {
     const seconds = String(date.getUTCSeconds()).padStart(2, '0');
     
     return `${hours}:${minutes}:${seconds}`;
+  };
+
+  // 時刻からシークバーの値を計算する関数
+  const getSeekValueFromTimestamp = (timestamp: number): number => {
+    if (!candlestickData || candlestickData.length === 0) return 0;
+    
+    // 時刻がデータ範囲外の場合は、範囲内に制限
+    const firstTimeValue = candlestickData[0].time;
+    const lastTimeValue = candlestickData[candlestickData.length - 1].time;
+    const firstTime = (typeof firstTimeValue === 'number' ? firstTimeValue : 0) as number;
+    const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
+    
+    if (timestamp <= firstTime) return 0;
+    if (timestamp >= lastTime) return 100;
+    
+    // 時刻がどのデータポイントの範囲内にあるかを検索
+    for (let i = 0; i < candlestickData.length - 1; i++) {
+      const currentTimeValue = candlestickData[i].time;
+      const nextTimeValue = candlestickData[i + 1].time;
+      const currentTime = (typeof currentTimeValue === 'number' ? currentTimeValue : 0) as number;
+      const nextTime = (typeof nextTimeValue === 'number' ? nextTimeValue : 0) as number;
+      
+      if (timestamp >= currentTime && timestamp <= nextTime) {
+        // データポイント間を補間
+        const timeDiff = nextTime - currentTime;
+        if (timeDiff === 0) {
+          return (i * 100) / (candlestickData.length - 1);
+        }
+        const fraction = (timestamp - currentTime) / timeDiff;
+        const exactIndex = i + fraction;
+        return (exactIndex * 100) / (candlestickData.length - 1);
+      }
+    }
+    
+    return 100;
   };
 
   // 形成中の1分足を計算する関数
