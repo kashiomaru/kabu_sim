@@ -30,6 +30,7 @@ export default function Home() {
   const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
+  const [speedMode, setSpeedMode] = useState<'min' | 'sec'>('sec'); // 速度モード（分/秒）
 
   // 再生/停止の制御
   useEffect(() => {
@@ -61,8 +62,9 @@ export default function Home() {
           const lastTimeValue = candlestickData[candlestickData.length - 1].time;
           const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
           
-          // 1秒進める
-          const newTimestamp = currentTimestamp + 1;
+          // 速度モードに応じて進める（sec: 1秒、min: 60秒）
+          const stepSeconds = speedMode === 'sec' ? 1 : 60;
+          const newTimestamp = currentTimestamp + stepSeconds;
           
           // データの最後を超えた場合は停止
           if (newTimestamp > lastTime) {
@@ -100,7 +102,7 @@ export default function Home() {
           
           return 100;
         });
-      }, 1000); // 1秒ごとに更新
+      }, speedMode === 'sec' ? 1000 : 1000); // 1秒ごとに更新（速度モードに応じて進む量は変わる）
     } else {
       // 停止中：タイマーをクリア
       if (playIntervalRef.current) {
@@ -116,7 +118,7 @@ export default function Home() {
         playIntervalRef.current = null;
       }
     };
-  }, [isPlaying, isControlsActive, candlestickData]);
+  }, [isPlaying, isControlsActive, candlestickData, speedMode]);
 
   const handlePlay = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
@@ -125,56 +127,36 @@ export default function Home() {
     setIndicator(isPlaying ? '停止中' : '再生中');
   };
 
-  const handleStepBackMinute = () => {
+  const handleStepBack = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
     const currentTimestamp = getCurrentTimestamp();
-    // 1分（60秒）を引く
-    const newTimestamp = currentTimestamp - 60;
+    // 速度モードに応じて戻す（sec: 1秒、min: 60秒）
+    const stepSeconds = speedMode === 'sec' ? 1 : 60;
+    const newTimestamp = currentTimestamp - stepSeconds;
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
     setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
-    setIndicator('1分戻し');
+    setIndicator(speedMode === 'sec' ? '1秒戻し' : '1分戻し');
   };
 
-  const handleStepBackSecond = () => {
+  const handleStepForward = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
     const currentTimestamp = getCurrentTimestamp();
-    // 1秒を引く
-    const newTimestamp = currentTimestamp - 1;
+    // 速度モードに応じて進める（sec: 1秒、min: 60秒）
+    const stepSeconds = speedMode === 'sec' ? 1 : 60;
+    const newTimestamp = currentTimestamp + stepSeconds;
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
     setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
-    setIndicator('1秒戻し');
+    setIndicator(speedMode === 'sec' ? '1秒送り' : '1分送り');
   };
 
-  const handleStepForwardSecond = () => {
-    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
-    
-    const currentTimestamp = getCurrentTimestamp();
-    // 1秒を足す
-    const newTimestamp = currentTimestamp + 1;
-    
-    // 新しい時刻に対応するシークバーの値を計算
-    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
-    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
-    setIndicator('1秒送り');
-  };
-
-  const handleStepForwardMinute = () => {
-    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
-    
-    const currentTimestamp = getCurrentTimestamp();
-    // 1分（60秒）を足す
-    const newTimestamp = currentTimestamp + 60;
-    
-    // 新しい時刻に対応するシークバーの値を計算
-    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
-    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
-    setIndicator('1分送り');
+  const handleSpeedModeToggle = () => {
+    setSpeedMode((current) => current === 'sec' ? 'min' : 'sec');
   };
 
   // CSVをパースする関数
@@ -649,18 +631,7 @@ export default function Home() {
               {/* ボタン群 */}
               <div className="flex gap-2 mb-4">
                 <button
-                  onClick={handleStepBackMinute}
-                  disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
-                    isControlsActive
-                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
-                  }`}
-                >
-                  ⏮′
-                </button>
-                <button
-                  onClick={handleStepBackSecond}
+                  onClick={handleStepBack}
                   disabled={!isControlsActive}
                   className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
                     isControlsActive
@@ -684,7 +655,7 @@ export default function Home() {
                   {isPlaying ? '⏸' : '▶'}
                 </button>
                 <button
-                  onClick={handleStepForwardSecond}
+                  onClick={handleStepForward}
                   disabled={!isControlsActive}
                   className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
                     isControlsActive
@@ -695,15 +666,17 @@ export default function Home() {
                   ⏭
                 </button>
                 <button
-                  onClick={handleStepForwardMinute}
+                  onClick={handleSpeedModeToggle}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
+                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm min-w-0 ${
                     isControlsActive
-                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                      ? speedMode === 'sec'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
                   }`}
                 >
-                  ⏭′
+                  {speedMode === 'sec' ? 'sec' : 'min'}
                 </button>
               </div>
 
