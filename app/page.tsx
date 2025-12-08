@@ -108,19 +108,37 @@ export default function Home() {
       low: number;
       close: number;
       firstTime: string;
+      dateTime: Date;
     }>();
 
     for (const item of reversedData) {
-      // 日付と時間を結合してDateオブジェクトを作成
-      const dateTimeStr = `${item.date} ${item.time}`;
-      const dateTime = new Date(dateTimeStr.replace(/\//g, '-'));
+      // 日付と時間をパース（日本時間として扱う）
+      // 形式: 2025/12/05, 15:30:00
+      const dateParts = item.date.split('/');
+      const timeParts = item.time.split(':');
+      
+      if (dateParts.length !== 3 || timeParts.length !== 3) continue;
 
+      const year = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1; // 月は0ベース
+      const day = parseInt(dateParts[2], 10);
+      const hour = parseInt(timeParts[0], 10);
+      const minute = parseInt(timeParts[1], 10);
+      const second = parseInt(timeParts[2], 10);
+
+      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute) || isNaN(second)) continue;
+
+      // CSVの時刻をそのままローカルタイムとして扱う
+      // new Date(year, month, day, hour, minute, second)はローカルタイムゾーンとして解釈される
+      // lightweight-chartsはUnixタイムスタンプを受け取り、表示時にローカルタイムゾーンで表示する
+      const dateTime = new Date(year, month, day, hour, minute, second);
+      
       if (isNaN(dateTime.getTime())) continue;
 
       // 1分単位のキーを作成（秒を0に）
-      const minuteKey = new Date(dateTime);
-      minuteKey.setSeconds(0, 0);
-      const key = minuteKey.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm形式
+      const minuteKey = new Date(year, month, day, hour, minute, 0);
+      // キーとして使用するため、年月日時分を文字列で表現
+      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
       if (!oneMinuteMap.has(key)) {
         oneMinuteMap.set(key, {
@@ -129,6 +147,7 @@ export default function Home() {
           low: item.price,
           close: item.price,
           firstTime: key,
+          dateTime: minuteKey, // Dateオブジェクトも保存
         });
       } else {
         const candle = oneMinuteMap.get(key)!;
@@ -141,9 +160,22 @@ export default function Home() {
     // Mapから配列に変換し、時系列順にソート
     const result: CandlestickData[] = Array.from(oneMinuteMap.entries())
       .map(([key, candle]) => {
-        // Unixタイムスタンプ（秒）に変換
-        const dateTime = new Date(key);
-        const timestamp = Math.floor(dateTime.getTime() / 1000);
+        // DateオブジェクトからUnixタイムスタンプ（秒）に変換
+        // キーから年月日時分を取得して、UTCとしてタイムスタンプを作成
+        // これにより、CSVの時刻がそのまま表示される
+        const keyParts = key.split('T');
+        const datePart = keyParts[0].split('-');
+        const timePart = keyParts[1].split(':');
+        const year = parseInt(datePart[0], 10);
+        const month = parseInt(datePart[1], 10) - 1;
+        const day = parseInt(datePart[2], 10);
+        const hour = parseInt(timePart[0], 10);
+        const minute = parseInt(timePart[1], 10);
+        
+        // UTCとしてDateオブジェクトを作成（CSVの時刻をそのままUTCとして扱う）
+        const utcDate = new Date(Date.UTC(year, month, day, hour, minute, 0));
+        const timestamp = Math.floor(utcDate.getTime() / 1000);
+        
         return {
           time: timestamp, // lightweight-chartsはUnixタイムスタンプ（秒）をサポート
           open: candle.open,
