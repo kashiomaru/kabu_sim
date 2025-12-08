@@ -35,14 +35,24 @@ export default function Home() {
     setIndicator(isPlaying ? '停止中' : '再生中');
   };
 
-  const handleStepBack = () => {
-    setIndicator('コマ戻し');
-    // コマ戻しのロジックをここに追加
+  const handleStepBackMinute = () => {
+    setIndicator('1分戻し');
+    // 1分戻しのロジックをここに追加
   };
 
-  const handleStepForward = () => {
-    setIndicator('コマ送り');
-    // コマ送りのロジックをここに追加
+  const handleStepBackSecond = () => {
+    setIndicator('1秒戻し');
+    // 1秒戻しのロジックをここに追加
+  };
+
+  const handleStepForwardSecond = () => {
+    setIndicator('1秒送り');
+    // 1秒送りのロジックをここに追加
+  };
+
+  const handleStepForwardMinute = () => {
+    setIndicator('1分送り');
+    // 1分送りのロジックをここに追加
   };
 
   // CSVをパースする関数
@@ -453,11 +463,22 @@ export default function Home() {
               </h2>
               
               {/* ボタン群 */}
-              <div className="flex gap-3 mb-4">
+              <div className="flex gap-2 mb-4">
                 <button
-                  onClick={handleStepBack}
+                  onClick={handleStepBackMinute}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  ⏮′
+                </button>
+                <button
+                  onClick={handleStepBackSecond}
+                  disabled={!isControlsActive}
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
                     isControlsActive
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
@@ -468,7 +489,7 @@ export default function Home() {
                 <button
                   onClick={handlePlay}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-xl min-w-0 ${
                     isControlsActive
                       ? isPlaying
                         ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -479,15 +500,26 @@ export default function Home() {
                   {isPlaying ? '⏸' : '▶'}
                 </button>
                 <button
-                  onClick={handleStepForward}
+                  onClick={handleStepForwardSecond}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
                     isControlsActive
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
                   }`}
                 >
                   ⏭
+                </button>
+                <button
+                  onClick={handleStepForwardMinute}
+                  disabled={!isControlsActive}
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  ⏭′
                 </button>
               </div>
 
