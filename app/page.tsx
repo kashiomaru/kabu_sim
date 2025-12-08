@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CandlestickChart from '@/components/CandlestickChart';
 
 interface CandlestickData {
@@ -29,8 +29,98 @@ export default function Home() {
   const [isControlsActive, setIsControlsActive] = useState(false);
   const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
+  const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
+
+  // 再生/停止の制御
+  useEffect(() => {
+    if (isPlaying && isControlsActive && candlestickData && candlestickData.length > 0) {
+      // 再生中：1秒ごとにシークバーを更新
+      playIntervalRef.current = setInterval(() => {
+        setSeekValue((currentSeekValue) => {
+          // 現在のシークバーの値から時刻を計算
+          if (!candlestickData || candlestickData.length === 0) return currentSeekValue;
+          
+          const maxIndex = candlestickData.length - 1;
+          const exactIndex = (maxIndex * currentSeekValue) / 100;
+          const currentIndex = Math.floor(exactIndex);
+          const nextIndex = Math.min(currentIndex + 1, maxIndex);
+          
+          const currentDataTime = (typeof candlestickData[currentIndex].time === 'number' 
+            ? candlestickData[currentIndex].time 
+            : 0) as number;
+          const nextDataTime = (typeof candlestickData[nextIndex].time === 'number' 
+            ? candlestickData[nextIndex].time 
+            : 0) as number;
+          
+          // データポイント間を補間して現在の時刻を計算
+          const fraction = exactIndex - currentIndex;
+          const timeDiff = nextDataTime - currentDataTime;
+          const currentTimestamp = currentDataTime + (timeDiff * fraction);
+          
+          // データの最後の時刻を取得
+          const lastTimeValue = candlestickData[candlestickData.length - 1].time;
+          const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
+          
+          // 1秒進める
+          const newTimestamp = currentTimestamp + 1;
+          
+          // データの最後を超えた場合は停止
+          if (newTimestamp > lastTime) {
+            setIsPlaying(false);
+            setIndicator('停止中');
+            return 100; // 最後の位置に設定
+          }
+          
+          // 新しい時刻に対応するシークバーの値を計算
+          if (newTimestamp <= (typeof candlestickData[0].time === 'number' ? candlestickData[0].time : 0)) {
+            return 0;
+          }
+          if (newTimestamp >= lastTime) {
+            return 100;
+          }
+          
+          // 時刻がどのデータポイントの範囲内にあるかを検索
+          for (let i = 0; i < candlestickData.length - 1; i++) {
+            const currentTimeValue = candlestickData[i].time;
+            const nextTimeValue = candlestickData[i + 1].time;
+            const currentTime = (typeof currentTimeValue === 'number' ? currentTimeValue : 0) as number;
+            const nextTime = (typeof nextTimeValue === 'number' ? nextTimeValue : 0) as number;
+            
+            if (newTimestamp >= currentTime && newTimestamp <= nextTime) {
+              // データポイント間を補間
+              const timeDiff2 = nextTime - currentTime;
+              if (timeDiff2 === 0) {
+                return (i * 100) / maxIndex;
+              }
+              const fraction2 = (newTimestamp - currentTime) / timeDiff2;
+              const exactIndex2 = i + fraction2;
+              return (exactIndex2 * 100) / maxIndex;
+            }
+          }
+          
+          return 100;
+        });
+      }, 1000); // 1秒ごとに更新
+    } else {
+      // 停止中：タイマーをクリア
+      if (playIntervalRef.current) {
+        clearInterval(playIntervalRef.current);
+        playIntervalRef.current = null;
+      }
+    }
+    
+    // クリーンアップ
+    return () => {
+      if (playIntervalRef.current) {
+        clearInterval(playIntervalRef.current);
+        playIntervalRef.current = null;
+      }
+    };
+  }, [isPlaying, isControlsActive, candlestickData]);
 
   const handlePlay = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
     setIsPlaying(!isPlaying);
     setIndicator(isPlaying ? '停止中' : '再生中');
   };
