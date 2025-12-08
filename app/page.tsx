@@ -45,10 +45,13 @@ export default function Home() {
                 歩み値
               </h2>
               <textarea
-                className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto"
+                className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
                 placeholder="歩み値がここに表示されます..."
                 defaultValue="歩み値（csv）をペースト"
               />
+              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200">
+                読み込み
+              </button>
             </div>
 
             {/* 右下：ボタンエリア */}
