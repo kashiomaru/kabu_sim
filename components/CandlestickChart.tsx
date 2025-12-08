@@ -52,6 +52,24 @@ export default function CandlestickChart({
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: (time: number, tickMarkType: any, locale: string) => {
+          // Unixタイムスタンプ（秒）をDateオブジェクトに変換
+          const date = new Date(time * 1000);
+          // 時間のみを表示（HH:mm形式）
+          const hours = String(date.getUTCHours()).padStart(2, '0');
+          const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+          return `${hours}:${minutes}`;
+        },
+      },
+      localization: {
+        timeFormatter: (time: number) => {
+          // Unixタイムスタンプ（秒）をDateオブジェクトに変換
+          const date = new Date(time * 1000);
+          // 時間のみを表示（HH:mm形式）
+          const hours = String(date.getUTCHours()).padStart(2, '0');
+          const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+          return `${hours}:${minutes}`;
+        },
       },
     });
 
