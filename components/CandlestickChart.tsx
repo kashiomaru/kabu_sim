@@ -100,9 +100,10 @@ export default function CandlestickChart({
   useEffect(() => {
     if (!seriesRef.current) return;
 
-    // データが提供されている場合はそれを使用、なければサンプルデータ
-    const chartData = data || generateSampleData();
-    seriesRef.current.setData(chartData as any);
+    // データが提供されている場合のみ表示（サンプルデータは表示しない）
+    if (data) {
+      seriesRef.current.setData(data as any);
+    }
   }, [data]);
 
   return (

@@ -252,7 +252,13 @@ export default function Home() {
               価格チャート
             </h2>
             <div className="w-full h-[calc(100%-4rem)]">
-              <CandlestickChart height={600} data={candlestickData} priceDecimalPlaces={priceDecimalPlaces} />
+              {candlestickData ? (
+                <CandlestickChart height={600} data={candlestickData} priceDecimalPlaces={priceDecimalPlaces} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                  <p>歩み値データを読み込んでください</p>
+                </div>
+              )}
             </div>
           </div>
 
