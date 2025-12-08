@@ -767,7 +767,7 @@ export default function Home() {
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li>個人用で作ったものなので不具合等あります</li>
               <li>入力データは HYPER SBI 2 から出力できる歩み値を保証しています</li>
-              <li>要望・不具合等があればこちらまでお願いします。
+              <li>要望・不具合等があればこちらまでお願いします
                 <a 
                   href="https://x.com/kashio6856" 
                   target="_blank" 
