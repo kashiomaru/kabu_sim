@@ -259,16 +259,48 @@ export default function Home() {
     setIndicator('データ読み込み完了');
   };
 
+  // シークバーの値から現在のデータポイントのインデックスを取得する関数
+  const getCurrentDataIndex = (): number => {
+    if (!candlestickData || candlestickData.length === 0) return 0;
+    // シークバーの値（0-100）をデータポイントのインデックス（0〜データ数-1）にマッピング
+    const maxIndex = candlestickData.length - 1;
+    return Math.round((maxIndex * seekValue) / 100);
+  };
+
   // シークバーの値から現在の時刻（Unixタイムスタンプ）を取得する関数
   const getCurrentTimestamp = (): number => {
-    if (!timeRange) return 0;
-    const timeDiff = timeRange.max - timeRange.min;
-    return timeRange.min + (timeDiff * seekValue / 100);
+    if (!candlestickData || candlestickData.length === 0) return 0;
+    
+    const dataIndex = getCurrentDataIndex();
+    const currentData = candlestickData[dataIndex];
+    const currentTime = typeof currentData.time === 'number' ? currentData.time : 0;
+    
+    // シークバーの値から秒の部分を計算（データポイント間を補間）
+    if (candlestickData.length === 1) return currentTime;
+    
+    const maxIndex = candlestickData.length - 1;
+    const exactIndex = (maxIndex * seekValue) / 100;
+    const currentIndex = Math.floor(exactIndex);
+    const nextIndex = Math.min(currentIndex + 1, maxIndex);
+    
+    if (currentIndex === nextIndex) return currentTime;
+    
+    const currentDataTime = typeof candlestickData[currentIndex].time === 'number' 
+      ? candlestickData[currentIndex].time 
+      : 0;
+    const nextDataTime = typeof candlestickData[nextIndex].time === 'number' 
+      ? candlestickData[nextIndex].time 
+      : 0;
+    
+    // データポイント間を補間（秒の部分を計算）
+    const fraction = exactIndex - currentIndex;
+    const timeDiff = nextDataTime - currentDataTime;
+    return currentDataTime + (timeDiff * fraction);
   };
 
   // シークバーの値から時間を計算する関数
   const getTimeFromSeekValue = (): string => {
-    if (!timeRange) return '00:00:00';
+    if (!candlestickData || candlestickData.length === 0) return '00:00:00';
     
     const currentTime = getCurrentTimestamp();
     
