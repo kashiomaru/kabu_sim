@@ -727,6 +727,63 @@ export default function Home() {
             </div>
           </div>
         </div>
+        
+        {/* フッター */}
+        <footer className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+            使用方法
+          </h2>
+          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+            <p>1. 右上のテキストエリアに歩み値データ（CSV形式）をペーストしてください</p>
+            <p>2. 「読み込み」ボタンをクリックしてデータを読み込みます</p>
+            <p>3. コントロールボタンで時間を操作できます：</p>
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li>⏮ / ⏭ : 1秒または1分戻し/送り（速度モードで切り替え）</li>
+              <li>▶ / ⏸ : 再生/停止（速度モードに応じて1秒または1分ずつ進む）</li>
+              <li>sec/min : 速度モード切り替え（sec: 1秒単位、min: 1分単位）</li>
+            </ul>
+            <p>4. シークバーを動かすと、その時刻までの1分足が表示されます</p>
+            <p>5. チャートにカーソルを置くと、カーソル位置の価格が表示されます</p>
+            <p>6. チャートの縦軸と横軸はドラッグでスケールを変更できます</p>
+            <p>7. チャートもドラッグで移動スライドできます</p>
+          </div>
+          
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+              歩み値の仕様
+            </h3>
+            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>CSV形式で、ヘッダー行に「日付,時間 ,約定値,出来高」が含まれること</li>
+                <li>データ行は「日付,時間,約定値,出来高」の形式（例：2025/12/05,15:30:00,258,"230,400"）</li>
+                <li>時系列は降順（新しいデータが上、古いデータが下）</li>
+                <li>出来高はカンマ区切りの数値文字列でも可（例："230,400"）</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+              注意事項
+            </h3>
+            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>個人用で作ったものなので不具合等あります</li>
+                <li>入力データは HYPER SBI 2 から出力できる歩み値のみ保証しています</li>
+                <li>要望・不具合等があればこちらまでお願いします。
+                  <a 
+                    href="https://x.com/kashio6856" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline ml-1"
+                  >
+                    かしお@てっく@kashio6856
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </footer>
       </div>
     </main>
   );
