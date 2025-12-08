@@ -580,7 +580,14 @@ export default function Home() {
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
             <div className="w-full h-full">
               {candlestickData ? (
-                <CandlestickChart height={600} data={getFilteredCandlestickData()} priceDecimalPlaces={priceDecimalPlaces} />
+                <CandlestickChart 
+                  height={600} 
+                  data={getFilteredCandlestickData()} 
+                  priceDecimalPlaces={priceDecimalPlaces}
+                  upColor="#FF0000"
+                  downColor="#00FFFF"
+                  backgroundColor="#000000"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
                   <p>歩み値データを読み込んでください</p>

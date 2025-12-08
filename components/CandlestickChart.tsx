@@ -15,12 +15,18 @@ interface CandlestickChartProps {
   data?: CandlestickData[];
   height?: number;
   priceDecimalPlaces?: number;
+  upColor?: string; // 陽線の色
+  downColor?: string; // 陰線の色
+  backgroundColor?: string; // 背景色
 }
 
 export default function CandlestickChart({ 
   data, 
   height = 400,
-  priceDecimalPlaces = 2
+  priceDecimalPlaces = 2,
+  upColor = '#26a69a', // デフォルト: 緑
+  downColor = '#ef5350', // デフォルト: 赤
+  backgroundColor = 'white' // デフォルト: 白
 }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -33,13 +39,13 @@ export default function CandlestickChart({
     // チャートの作成
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: 'white' },
-        textColor: '#333',
+        background: { type: ColorType.Solid, color: backgroundColor },
+        textColor: backgroundColor === 'white' || backgroundColor === '#ffffff' ? '#333' : '#fff',
         attributionLogo: false, // TradingViewロゴを非表示
       },
       grid: {
-        vertLines: { color: '#e0e0e0' },
-        horzLines: { color: '#e0e0e0' },
+        vertLines: { color: '#333333' },
+        horzLines: { color: '#333333' },
       },
       width: chartContainerRef.current.clientWidth,
       height: height,
@@ -53,11 +59,11 @@ export default function CandlestickChart({
 
     // ローソク足シリーズの追加（初期値）
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
+      upColor: upColor,
+      downColor: downColor,
       borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
+      wickUpColor: upColor,
+      wickDownColor: downColor,
     });
 
     seriesRef.current = candlestickSeries;
