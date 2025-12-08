@@ -421,10 +421,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-4rem)]">
           {/* 左側：チャートエリア */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-4">
-              価格チャート
-            </h2>
-            <div className="w-full h-[calc(100%-4rem)]">
+            <div className="w-full h-full">
               {candlestickData ? (
                 <CandlestickChart height={600} data={getFilteredCandlestickData()} priceDecimalPlaces={priceDecimalPlaces} />
               ) : (
@@ -439,9 +436,6 @@ export default function Home() {
           <div className="lg:col-span-1 flex flex-col gap-6">
             {/* 右上：テキストエリア */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex-1 flex flex-col min-h-0">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-                歩み値
-              </h2>
               <textarea
                 className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
                 placeholder="歩み値（csv）をペースト"
@@ -458,10 +452,6 @@ export default function Home() {
 
             {/* 右下：ボタンエリア */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-                コントロール
-              </h2>
-              
               {/* ボタン群 */}
               <div className="flex gap-2 mb-4">
                 <button
