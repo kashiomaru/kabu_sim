@@ -46,8 +46,7 @@ export default function Home() {
               </h2>
               <textarea
                 className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
-                placeholder="歩み値がここに表示されます..."
-                defaultValue="歩み値（csv）をペースト"
+                placeholder="歩み値（csv）をペースト"
               />
               <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200">
                 読み込み
@@ -64,23 +63,22 @@ export default function Home() {
               <div className="flex gap-3 mb-4">
                 <button
                   onClick={handleStepBack}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl"
+                  disabled
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl cursor-not-allowed opacity-50"
                 >
                   ⏮
                 </button>
                 <button
                   onClick={handlePlay}
-                  className={`flex-1 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl ${
-                    isPlaying
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}
+                  disabled
+                  className="flex-1 bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl cursor-not-allowed opacity-50"
                 >
-                  {isPlaying ? '⏸' : '▶'}
+                  ▶
                 </button>
                 <button
                   onClick={handleStepForward}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl"
+                  disabled
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-2xl cursor-not-allowed opacity-50"
                 >
                   ⏭
                 </button>
@@ -94,7 +92,8 @@ export default function Home() {
                   max="100"
                   value={seekValue}
                   onChange={(e) => setSeekValue(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  disabled
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-not-allowed opacity-50"
                 />
               </div>
             </div>
