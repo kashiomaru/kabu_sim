@@ -27,6 +27,7 @@ export default function Home() {
   const [candlestickData, setCandlestickData] = useState<CandlestickData[] | undefined>(undefined);
   const [isControlsActive, setIsControlsActive] = useState(false);
   const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
+  const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
 
   const handlePlay = () => {
     setIsPlaying(!isPlaying);
@@ -106,8 +107,8 @@ export default function Home() {
   };
 
   // 1分足データを作成する関数（時系列降順を考慮）
-  const createOneMinuteData = (ayumiData: AyumiData[]): { data: CandlestickData[] | null; decimalPlaces: number } => {
-    if (ayumiData.length === 0) return { data: null, decimalPlaces: 0 };
+  const createOneMinuteData = (ayumiData: AyumiData[]): { data: CandlestickData[] | null; decimalPlaces: number; timeRange: { min: number; max: number } | null } => {
+    if (ayumiData.length === 0) return { data: null, decimalPlaces: 0, timeRange: null };
 
     // 時系列降順なので、配列を逆順にして古い順にする
     const reversedData = [...ayumiData].reverse();
@@ -207,7 +208,18 @@ export default function Home() {
         return timeA - timeB;
       });
 
-    return { data: result.length > 0 ? result : null, decimalPlaces: maxDecimalPlaces };
+    // 時間範囲を計算
+    let timeRange: { min: number; max: number } | null = null;
+    if (result.length > 0) {
+      const minTime = typeof result[0].time === 'number' ? result[0].time : 0;
+      const maxTime = typeof result[result.length - 1].time === 'number' ? result[result.length - 1].time : 0;
+      timeRange = {
+        min: minTime,
+        max: maxTime,
+      };
+    }
+
+    return { data: result.length > 0 ? result : null, decimalPlaces: maxDecimalPlaces, timeRange };
   };
 
   // 読み込みボタンのハンドラー
@@ -227,19 +239,41 @@ export default function Home() {
     }
 
     // 1分足データを作成
-    const { data: oneMinuteData, decimalPlaces } = createOneMinuteData(ayumiData);
+    const { data: oneMinuteData, decimalPlaces, timeRange } = createOneMinuteData(ayumiData);
     if (!oneMinuteData) {
       alert('1分足データの作成に失敗しました');
       setIsControlsActive(false);
       setCandlestickData(undefined);
+      setTimeRange(null);
       return;
     }
 
     // 成功したらデータを設定し、コントロールをアクティブにする
     setCandlestickData(oneMinuteData);
     setPriceDecimalPlaces(decimalPlaces);
+    setTimeRange(timeRange);
+    setSeekValue(0); // シークバーを最初の位置にリセット
     setIsControlsActive(true);
     setIndicator('データ読み込み完了');
+  };
+
+  // シークバーの値から時間を計算する関数
+  const getTimeFromSeekValue = (): string => {
+    if (!timeRange) return '00:00:00';
+    
+    // シークバーの値（0-100）を時間範囲にマッピング
+    const timeDiff = timeRange.max - timeRange.min;
+    const currentTime = timeRange.min + (timeDiff * seekValue / 100);
+    
+    // Unixタイムスタンプ（秒）をDateオブジェクトに変換
+    const date = new Date(currentTime * 1000);
+    
+    // 00:00:00形式でフォーマット
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+    
+    return `${hours}:${minutes}:${seconds}`;
   };
 
   return (
@@ -330,6 +364,12 @@ export default function Home() {
 
               {/* シークバー */}
               <div>
+                {/* 時間表示 */}
+                <div className="mb-2 text-center">
+                  <span className="text-lg font-mono font-semibold text-gray-800 dark:text-white">
+                    {getTimeFromSeekValue()}
+                  </span>
+                </div>
                 <input
                   type="range"
                   min="0"
