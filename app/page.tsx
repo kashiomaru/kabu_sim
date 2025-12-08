@@ -477,12 +477,18 @@ export default function Home() {
     const day = currentDate.getUTCDate();
     const hour = currentDate.getUTCHours();
     const minute = currentDate.getUTCMinutes();
+    const second = currentDate.getUTCSeconds();
     
-    // 分の開始時刻（秒を0に）
-    const minuteStart = new Date(Date.UTC(year, month, day, hour, minute, 0));
-    const minuteStartTimestamp = Math.floor(minuteStart.getTime() / 1000);
+    // 現在の時刻が分の開始時刻（秒が0）の場合は、形成中の1分足はない
+    // 例：10:12:00の時点では、10:12:00の1分足は未形成
+    if (second === 0) return null;
     
-    // 現在の時刻までの歩み値データを抽出（インデックスも保持）
+    // 現在の分の開始時刻を計算（形成中の1分足は現在の分）
+    // 例：10:12:01の時点では、10:12:00の1分足が形成中
+    const currentMinuteStart = new Date(Date.UTC(year, month, day, hour, minute, 0));
+    const currentMinuteStartTimestamp = Math.floor(currentMinuteStart.getTime() / 1000);
+    
+    // 現在の分の開始時刻から現在の時刻までの歩み値データを抽出（インデックスも保持）
     const formingAyumiDataWithIndex = ayumiData
       .map((item, index) => ({ item, originalIndex: index }))
       .filter(({ item }) => {
@@ -504,7 +510,7 @@ export default function Home() {
         const itemTimestamp = Math.floor(itemDate.getTime() / 1000);
         
         // 現在の分の開始時刻から現在の時刻までのデータ
-        return itemTimestamp >= minuteStartTimestamp && itemTimestamp <= currentTimestamp;
+        return itemTimestamp >= currentMinuteStartTimestamp && itemTimestamp <= currentTimestamp;
       });
     
     if (formingAyumiDataWithIndex.length === 0) return null;
@@ -557,7 +563,7 @@ export default function Home() {
     const low = Math.min(...prices);
     
     return {
-      time: minuteStartTimestamp,
+      time: currentMinuteStartTimestamp, // 現在の分の開始時刻
       open,
       high,
       low,
