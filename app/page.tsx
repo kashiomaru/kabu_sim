@@ -482,37 +482,40 @@ export default function Home() {
     const minuteStart = new Date(Date.UTC(year, month, day, hour, minute, 0));
     const minuteStartTimestamp = Math.floor(minuteStart.getTime() / 1000);
     
-    // 現在の時刻までの歩み値データを抽出
-    const formingAyumiData = ayumiData.filter((item) => {
-      // 日付と時間をパース
-      const dateParts = item.date.split('/');
-      const timeParts = item.time.split(':');
-      
-      if (dateParts.length !== 3 || timeParts.length !== 3) return false;
-      
-      const itemYear = parseInt(dateParts[0], 10);
-      const itemMonth = parseInt(dateParts[1], 10) - 1;
-      const itemDay = parseInt(dateParts[2], 10);
-      const itemHour = parseInt(timeParts[0], 10);
-      const itemMinute = parseInt(timeParts[1], 10);
-      const itemSecond = parseInt(timeParts[2], 10);
-      
-      // UTCとしてDateオブジェクトを作成
-      const itemDate = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
-      const itemTimestamp = Math.floor(itemDate.getTime() / 1000);
-      
-      // 現在の分の開始時刻から現在の時刻までのデータ
-      return itemTimestamp >= minuteStartTimestamp && itemTimestamp <= currentTimestamp;
-    });
+    // 現在の時刻までの歩み値データを抽出（インデックスも保持）
+    const formingAyumiDataWithIndex = ayumiData
+      .map((item, index) => ({ item, originalIndex: index }))
+      .filter(({ item }) => {
+        // 日付と時間をパース
+        const dateParts = item.date.split('/');
+        const timeParts = item.time.split(':');
+        
+        if (dateParts.length !== 3 || timeParts.length !== 3) return false;
+        
+        const itemYear = parseInt(dateParts[0], 10);
+        const itemMonth = parseInt(dateParts[1], 10) - 1;
+        const itemDay = parseInt(dateParts[2], 10);
+        const itemHour = parseInt(timeParts[0], 10);
+        const itemMinute = parseInt(timeParts[1], 10);
+        const itemSecond = parseInt(timeParts[2], 10);
+        
+        // UTCとしてDateオブジェクトを作成
+        const itemDate = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
+        const itemTimestamp = Math.floor(itemDate.getTime() / 1000);
+        
+        // 現在の分の開始時刻から現在の時刻までのデータ
+        return itemTimestamp >= minuteStartTimestamp && itemTimestamp <= currentTimestamp;
+      });
     
-    if (formingAyumiData.length === 0) return null;
+    if (formingAyumiDataWithIndex.length === 0) return null;
     
-    // 時系列順（古い順）にソート
-    const sortedAyumiData = [...formingAyumiData].sort((a, b) => {
-      const datePartsA = a.date.split('/');
-      const timePartsA = a.time.split(':');
-      const datePartsB = b.date.split('/');
-      const timePartsB = b.time.split(':');
+    // 時系列順（古い順）にソート、同じ秒数の場合は元の順序（originalIndex）を保持
+    // ayumiDataは時系列降順なので、同じ秒数の場合はoriginalIndexが小さい方が新しいデータ
+    const sortedAyumiData = [...formingAyumiDataWithIndex].sort((a, b) => {
+      const datePartsA = a.item.date.split('/');
+      const timePartsA = a.item.time.split(':');
+      const datePartsB = b.item.date.split('/');
+      const timePartsB = b.item.time.split(':');
       
       if (datePartsA.length !== 3 || timePartsA.length !== 3) return 0;
       if (datePartsB.length !== 3 || timePartsB.length !== 3) return 0;
@@ -534,11 +537,20 @@ export default function Home() {
       const dateA = new Date(Date.UTC(yearA, monthA, dayA, hourA, minuteA, secondA));
       const dateB = new Date(Date.UTC(yearB, monthB, dayB, hourB, minuteB, secondB));
       
-      return dateA.getTime() - dateB.getTime();
+      const timeDiff = dateA.getTime() - dateB.getTime();
+      
+      // 同じ秒数の場合、元の順序を保持（originalIndexが小さい方が新しいデータなので、降順に並べる）
+      if (timeDiff === 0) {
+        // ayumiDataは時系列降順なので、originalIndexが小さい方が新しい
+        // 時系列順（古い順）にソートするため、originalIndexが大きい方が古い
+        return b.originalIndex - a.originalIndex;
+      }
+      
+      return timeDiff;
     });
     
     // 四本値を計算（時系列順にソート済み）
-    const prices = sortedAyumiData.map(item => item.price);
+    const prices = sortedAyumiData.map(({ item }) => item.price);
     const open = prices[0]; // 分の開始時刻の価格（最初）
     const close = prices[prices.length - 1]; // 現在の時刻の価格（最後）
     const high = Math.max(...prices);
