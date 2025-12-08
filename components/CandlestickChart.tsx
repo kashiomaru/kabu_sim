@@ -35,6 +35,7 @@ export default function CandlestickChart({
       layout: {
         background: { type: ColorType.Solid, color: 'white' },
         textColor: '#333',
+        attributionLogo: false, // TradingViewロゴを非表示
       },
       grid: {
         vertLines: { color: '#e0e0e0' },
