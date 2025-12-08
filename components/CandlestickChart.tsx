@@ -36,6 +36,9 @@ export default function CandlestickChart({
   useEffect(() => {
     if (!chartContainerRef.current || chartRef.current) return;
 
+    // チャートの高さを決定（heightが指定されていない場合は親要素の高さを使用）
+    const chartHeight = height || (chartContainerRef.current.parentElement?.clientHeight || 400);
+
     // チャートの作成
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -48,7 +51,7 @@ export default function CandlestickChart({
         horzLines: { color: '#333333' },
       },
       width: chartContainerRef.current.clientWidth,
-      height: height,
+      height: chartHeight,
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
@@ -114,7 +117,7 @@ export default function CandlestickChart({
         seriesRef.current = null;
       }
     };
-  }, [height]);
+  }, [height, backgroundColor]);
 
   // 価格フォーマットの更新
   useEffect(() => {

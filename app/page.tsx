@@ -608,7 +608,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-4rem)]">
           {/* 左側：チャートエリア */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-            <div className="w-full h-full">
+            <div className="w-full h-[calc(100%-4rem)]">
               {candlestickData ? (
                 <CandlestickChart 
                   height={600} 
@@ -645,9 +645,30 @@ export default function Home() {
             </div>
 
             {/* 右下：ボタンエリア */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col">
+              {/* シークバー */}
+              <div className="mb-4">
+                {/* 時間表示 */}
+                <div className="mb-2 text-center">
+                  <span className="text-lg font-mono font-semibold text-gray-800 dark:text-white">
+                    {getTimeFromSeekValue()}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={seekValue}
+                  onChange={(e) => setSeekValue(Number(e.target.value))}
+                  disabled={!isControlsActive}
+                  className={`w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none accent-blue-600 ${
+                    isControlsActive ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                  }`}
+                />
+              </div>
+
               {/* ボタン群 */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2">
                 <button
                   onClick={handleStepBack}
                   disabled={!isControlsActive}
@@ -696,27 +717,6 @@ export default function Home() {
                 >
                   {speedMode === 'sec' ? 'sec' : 'min'}
                 </button>
-              </div>
-
-              {/* シークバー */}
-              <div>
-                {/* 時間表示 */}
-                <div className="mb-2 text-center">
-                  <span className="text-lg font-mono font-semibold text-gray-800 dark:text-white">
-                    {getTimeFromSeekValue()}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={seekValue}
-                  onChange={(e) => setSeekValue(Number(e.target.value))}
-                  disabled={!isControlsActive}
-                  className={`w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none accent-blue-600 ${
-                    isControlsActive ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                  }`}
-                />
               </div>
             </div>
           </div>
