@@ -525,10 +525,40 @@ export default function Home() {
     
     if (formingAyumiData.length === 0) return null;
     
-    // 四本値を計算
-    const prices = formingAyumiData.map(item => item.price);
-    const open = prices[0];
-    const close = prices[prices.length - 1];
+    // 時系列順（古い順）にソート
+    const sortedAyumiData = [...formingAyumiData].sort((a, b) => {
+      const datePartsA = a.date.split('/');
+      const timePartsA = a.time.split(':');
+      const datePartsB = b.date.split('/');
+      const timePartsB = b.time.split(':');
+      
+      if (datePartsA.length !== 3 || timePartsA.length !== 3) return 0;
+      if (datePartsB.length !== 3 || timePartsB.length !== 3) return 0;
+      
+      const yearA = parseInt(datePartsA[0], 10);
+      const monthA = parseInt(datePartsA[1], 10) - 1;
+      const dayA = parseInt(datePartsA[2], 10);
+      const hourA = parseInt(timePartsA[0], 10);
+      const minuteA = parseInt(timePartsA[1], 10);
+      const secondA = parseInt(timePartsA[2], 10);
+      
+      const yearB = parseInt(datePartsB[0], 10);
+      const monthB = parseInt(datePartsB[1], 10) - 1;
+      const dayB = parseInt(datePartsB[2], 10);
+      const hourB = parseInt(timePartsB[0], 10);
+      const minuteB = parseInt(timePartsB[1], 10);
+      const secondB = parseInt(timePartsB[2], 10);
+      
+      const dateA = new Date(Date.UTC(yearA, monthA, dayA, hourA, minuteA, secondA));
+      const dateB = new Date(Date.UTC(yearB, monthB, dayB, hourB, minuteB, secondB));
+      
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    // 四本値を計算（時系列順にソート済み）
+    const prices = sortedAyumiData.map(item => item.price);
+    const open = prices[0]; // 分の開始時刻の価格（最初）
+    const close = prices[prices.length - 1]; // 現在の時刻の価格（最後）
     const high = Math.max(...prices);
     const low = Math.min(...prices);
     
