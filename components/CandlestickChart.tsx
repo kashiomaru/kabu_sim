@@ -14,11 +14,13 @@ interface CandlestickData {
 interface CandlestickChartProps {
   data?: CandlestickData[];
   height?: number;
+  priceDecimalPlaces?: number;
 }
 
 export default function CandlestickChart({ 
   data, 
-  height = 400 
+  height = 400,
+  priceDecimalPlaces = 2
 }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -48,7 +50,7 @@ export default function CandlestickChart({
 
     chartRef.current = chart;
 
-    // ローソク足シリーズの追加
+    // ローソク足シリーズの追加（初期値）
     const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#26a69a',
       downColor: '#ef5350',
@@ -80,13 +82,27 @@ export default function CandlestickChart({
     };
   }, [height]);
 
+  // 価格フォーマットの更新
+  useEffect(() => {
+    if (!seriesRef.current) return;
+
+    // 価格フォーマットを設定
+    const priceFormat = priceDecimalPlaces === 0
+      ? { type: 'price' as const, precision: 0, minMove: 1 }
+      : { type: 'price' as const, precision: priceDecimalPlaces, minMove: Math.pow(10, -priceDecimalPlaces) };
+
+    seriesRef.current.applyOptions({
+      priceFormat: priceFormat,
+    });
+  }, [priceDecimalPlaces]);
+
   // データの更新
   useEffect(() => {
     if (!seriesRef.current) return;
 
     // データが提供されている場合はそれを使用、なければサンプルデータ
     const chartData = data || generateSampleData();
-    seriesRef.current.setData(chartData);
+    seriesRef.current.setData(chartData as any);
   }, [data]);
 
   return (

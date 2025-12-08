@@ -16,6 +16,7 @@ interface AyumiData {
   time: string;
   price: number;
   volume: number;
+  priceDecimalPlaces: number; // 価格の小数点桁数
 }
 
 export default function Home() {
@@ -25,6 +26,7 @@ export default function Home() {
   const [csvText, setCsvText] = useState('');
   const [candlestickData, setCandlestickData] = useState<CandlestickData[] | undefined>(undefined);
   const [isControlsActive, setIsControlsActive] = useState(false);
+  const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
 
   const handlePlay = () => {
     setIsPlaying(!isPlaying);
@@ -81,25 +83,37 @@ export default function Home() {
 
       const date = parts[0].trim();
       const time = parts[1].trim();
-      const price = parseFloat(parts[2].trim());
+      const priceStr = parts[2].trim();
+      const price = parseFloat(priceStr);
+      
+      // 価格の小数点桁数を判定
+      let priceDecimalPlaces = 0;
+      if (priceStr.includes('.')) {
+        const decimalPart = priceStr.split('.')[1];
+        priceDecimalPlaces = decimalPart ? decimalPart.length : 0;
+      }
+      
       // 出来高からカンマを除去
       const volumeStr = parts[3].trim().replace(/"/g, '').replace(/,/g, '');
       const volume = parseFloat(volumeStr);
 
       if (isNaN(price) || isNaN(volume)) continue;
 
-      data.push({ date, time, price, volume });
+      data.push({ date, time, price, volume, priceDecimalPlaces });
     }
 
     return data.length > 0 ? data : null;
   };
 
   // 1分足データを作成する関数（時系列降順を考慮）
-  const createOneMinuteData = (ayumiData: AyumiData[]): CandlestickData[] | null => {
-    if (ayumiData.length === 0) return null;
+  const createOneMinuteData = (ayumiData: AyumiData[]): { data: CandlestickData[] | null; decimalPlaces: number } => {
+    if (ayumiData.length === 0) return { data: null, decimalPlaces: 0 };
 
     // 時系列降順なので、配列を逆順にして古い順にする
     const reversedData = [...ayumiData].reverse();
+
+    // 最大の小数点桁数を追跡
+    let maxDecimalPlaces = 0;
 
     // 1分ごとにグループ化
     const oneMinuteMap = new Map<string, {
@@ -127,6 +141,9 @@ export default function Home() {
       const second = parseInt(timeParts[2], 10);
 
       if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute) || isNaN(second)) continue;
+
+      // 最大の小数点桁数を更新
+      maxDecimalPlaces = Math.max(maxDecimalPlaces, item.priceDecimalPlaces);
 
       // CSVの時刻をそのままローカルタイムとして扱う
       // new Date(year, month, day, hour, minute, second)はローカルタイムゾーンとして解釈される
@@ -190,7 +207,7 @@ export default function Home() {
         return timeA - timeB;
       });
 
-    return result.length > 0 ? result : null;
+    return { data: result.length > 0 ? result : null, decimalPlaces: maxDecimalPlaces };
   };
 
   // 読み込みボタンのハンドラー
@@ -210,7 +227,7 @@ export default function Home() {
     }
 
     // 1分足データを作成
-    const oneMinuteData = createOneMinuteData(ayumiData);
+    const { data: oneMinuteData, decimalPlaces } = createOneMinuteData(ayumiData);
     if (!oneMinuteData) {
       alert('1分足データの作成に失敗しました');
       setIsControlsActive(false);
@@ -220,6 +237,7 @@ export default function Home() {
 
     // 成功したらデータを設定し、コントロールをアクティブにする
     setCandlestickData(oneMinuteData);
+    setPriceDecimalPlaces(decimalPlaces);
     setIsControlsActive(true);
     setIndicator('データ読み込み完了');
   };
@@ -234,7 +252,7 @@ export default function Home() {
               価格チャート
             </h2>
             <div className="w-full h-[calc(100%-4rem)]">
-              <CandlestickChart height={600} data={candlestickData} />
+              <CandlestickChart height={600} data={candlestickData} priceDecimalPlaces={priceDecimalPlaces} />
             </div>
           </div>
 
