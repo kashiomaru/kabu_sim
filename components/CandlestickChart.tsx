@@ -71,6 +71,15 @@ export default function CandlestickChart({
           return `${hours}:${minutes}`;
         },
       },
+      crosshair: {
+        mode: 0, // CrosshairMode.Normal - カーソル位置のY座標に対応する価格で横点線を表示
+        vertLine: {
+          visible: true,
+        },
+        horzLine: {
+          visible: true,
+        },
+      },
     });
 
     chartRef.current = chart;
