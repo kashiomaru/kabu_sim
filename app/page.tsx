@@ -730,9 +730,9 @@ export default function Home() {
         
         {/* フッター */}
         <footer className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
             使用方法
-          </h2>
+          </h3>
           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
             <p>1. 右上のテキストエリアに歩み値データ（CSV形式）をペーストしてください</p>
             <p>2. 「読み込み」ボタンをクリックしてデータを読み込みます</p>
@@ -748,40 +748,36 @@ export default function Home() {
             <p>7. チャートもドラッグで移動スライドできます</p>
           </div>
           
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-              歩み値の仕様
-            </h3>
-            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-              <ul className="list-disc list-inside ml-4 space-y-1">
-                <li>CSV形式で、ヘッダー行に「日付,時間 ,約定値,出来高」が含まれること</li>
-                <li>データ行は「日付,時間,約定値,出来高」の形式（例：2025/12/05,15:30:00,258,"230,400"）</li>
-                <li>時系列は降順（新しいデータが上、古いデータが下）</li>
-                <li>出来高はカンマ区切りの数値文字列でも可（例："230,400"）</li>
-              </ul>
-            </div>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3 mt-6">
+            歩み値の仕様
+          </h3>
+          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li>CSV形式で、ヘッダー行に「日付,時間 ,約定値,出来高」が含まれること</li>
+              <li>データ行は「日付,時間,約定値,出来高」の形式（例：2025/12/05,15:30:00,258,"230,400"）</li>
+              <li>時系列は降順（新しいデータが上、古いデータが下）</li>
+              <li>出来高はカンマ区切りの数値文字列でも可（例："230,400"）</li>
+            </ul>
           </div>
           
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-              注意事項
-            </h3>
-            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-              <ul className="list-disc list-inside ml-4 space-y-1">
-                <li>個人用で作ったものなので不具合等あります</li>
-                <li>入力データは HYPER SBI 2 から出力できる歩み値のみ保証しています</li>
-                <li>要望・不具合等があればこちらまでお願いします。
-                  <a 
-                    href="https://x.com/kashio6856" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 hover:underline ml-1"
-                  >
-                    かしお@てっく@kashio6856
-                  </a>
-                </li>
-              </ul>
-            </div>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3 mt-6">
+            注意事項
+          </h3>
+          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li>個人用で作ったものなので不具合等あります</li>
+              <li>入力データは HYPER SBI 2 から出力できる歩み値を保証しています</li>
+              <li>要望・不具合等があればこちらまでお願いします。
+                <a 
+                  href="https://x.com/kashio6856" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline ml-1"
+                >
+                  かしお@てっく@kashio6856
+                </a>
+              </li>
+            </ul>
           </div>
         </footer>
       </div>
