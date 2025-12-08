@@ -211,8 +211,10 @@ export default function Home() {
     // 時間範囲を計算
     let timeRange: { min: number; max: number } | null = null;
     if (result.length > 0) {
-      const minTime = typeof result[0].time === 'number' ? result[0].time : 0;
-      const maxTime = typeof result[result.length - 1].time === 'number' ? result[result.length - 1].time : 0;
+      const firstTime = result[0].time;
+      const lastTime = result[result.length - 1].time;
+      const minTime: number = typeof firstTime === 'number' ? firstTime : 0;
+      const maxTime: number = typeof lastTime === 'number' ? lastTime : 0;
       timeRange = {
         min: minTime,
         max: maxTime,
@@ -257,13 +259,18 @@ export default function Home() {
     setIndicator('データ読み込み完了');
   };
 
+  // シークバーの値から現在の時刻（Unixタイムスタンプ）を取得する関数
+  const getCurrentTimestamp = (): number => {
+    if (!timeRange) return 0;
+    const timeDiff = timeRange.max - timeRange.min;
+    return timeRange.min + (timeDiff * seekValue / 100);
+  };
+
   // シークバーの値から時間を計算する関数
   const getTimeFromSeekValue = (): string => {
     if (!timeRange) return '00:00:00';
     
-    // シークバーの値（0-100）を時間範囲にマッピング
-    const timeDiff = timeRange.max - timeRange.min;
-    const currentTime = timeRange.min + (timeDiff * seekValue / 100);
+    const currentTime = getCurrentTimestamp();
     
     // Unixタイムスタンプ（秒）をDateオブジェクトに変換
     const date = new Date(currentTime * 1000);
@@ -274,6 +281,26 @@ export default function Home() {
     const seconds = String(date.getUTCSeconds()).padStart(2, '0');
     
     return `${hours}:${minutes}:${seconds}`;
+  };
+
+  // シークバーの時刻に合わせて1分足データをフィルタリングする関数
+  const getFilteredCandlestickData = (): CandlestickData[] | undefined => {
+    if (!candlestickData || !timeRange) return undefined;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    
+    // 現在の時刻までの1分足データをフィルタリング
+    // 例：09:30:20の場合、09:30:00までのデータを表示（09:31:00は表示しない）
+    // 秒を0にして分単位で比較するため、現在の時刻の分の開始時刻（秒を0にした時刻）までを表示
+    const currentDate = new Date(currentTimestamp * 1000);
+    currentDate.setUTCSeconds(0, 0); // 秒を0にして分の開始時刻に
+    const currentMinuteStart = Math.floor(currentDate.getTime() / 1000);
+    
+    return candlestickData.filter((candle) => {
+      const candleTime = typeof candle.time === 'number' ? candle.time : 0;
+      // 現在の分の開始時刻以下のデータのみを表示
+      return candleTime <= currentMinuteStart;
+    });
   };
 
   return (
@@ -287,7 +314,7 @@ export default function Home() {
             </h2>
             <div className="w-full h-[calc(100%-4rem)]">
               {candlestickData ? (
-                <CandlestickChart height={600} data={candlestickData} priceDecimalPlaces={priceDecimalPlaces} />
+                <CandlestickChart height={600} data={getFilteredCandlestickData()} priceDecimalPlaces={priceDecimalPlaces} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
                   <p>歩み値データを読み込んでください</p>
