@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { createChart, IChartApi, ISeriesApi, ColorType } from 'lightweight-charts';
 
 interface CandlestickData {
-  time: string;
+  time: string | number;
   open: number;
   high: number;
   low: number;
@@ -24,8 +24,9 @@ export default function CandlestickChart({
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
 
+  // チャートの初期化（初回のみ）
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || chartRef.current) return;
 
     // チャートの作成
     const chart = createChart(chartContainerRef.current, {
@@ -58,10 +59,6 @@ export default function CandlestickChart({
 
     seriesRef.current = candlestickSeries;
 
-    // サンプルデータ（dataが提供されない場合）
-    const defaultData = data || generateSampleData();
-    candlestickSeries.setData(defaultData);
-
     // リサイズハンドラー
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -77,9 +74,20 @@ export default function CandlestickChart({
       window.removeEventListener('resize', handleResize);
       if (chartRef.current) {
         chartRef.current.remove();
+        chartRef.current = null;
+        seriesRef.current = null;
       }
     };
-  }, [data, height]);
+  }, [height]);
+
+  // データの更新
+  useEffect(() => {
+    if (!seriesRef.current) return;
+
+    // データが提供されている場合はそれを使用、なければサンプルデータ
+    const chartData = data || generateSampleData();
+    seriesRef.current.setData(chartData);
+  }, [data]);
 
   return (
     <div className="w-full">
