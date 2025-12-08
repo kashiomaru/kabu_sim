@@ -605,7 +605,13 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-4rem)]">
+        {/* ヘッダー */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+            チャートシミュレーター（１分足）
+          </h1>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
           {/* 左側：チャートエリア */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
             <div className="w-full h-[calc(100%-4rem)]">
