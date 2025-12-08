@@ -25,6 +25,7 @@ export default function Home() {
   const [seekValue, setSeekValue] = useState(0);
   const [csvText, setCsvText] = useState('');
   const [candlestickData, setCandlestickData] = useState<CandlestickData[] | undefined>(undefined);
+  const [ayumiData, setAyumiData] = useState<AyumiData[] | null>(null); // 元の歩み値データを保持
   const [isControlsActive, setIsControlsActive] = useState(false);
   const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
@@ -252,6 +253,7 @@ export default function Home() {
 
     // 成功したらデータを設定し、コントロールをアクティブにする
     setCandlestickData(oneMinuteData);
+    setAyumiData(ayumiData); // 元の歩み値データも保持
     setPriceDecimalPlaces(decimalPlaces);
     setTimeRange(timeRange);
     setSeekValue(0); // シークバーを最初の位置にリセット
@@ -315,6 +317,63 @@ export default function Home() {
     return `${hours}:${minutes}:${seconds}`;
   };
 
+  // 形成中の1分足を計算する関数
+  const calculateFormingCandle = (currentTimestamp: number): CandlestickData | null => {
+    if (!ayumiData || ayumiData.length === 0) return null;
+    
+    // 現在の時刻が属する分の開始時刻を計算
+    const currentDate = new Date(currentTimestamp * 1000);
+    const year = currentDate.getUTCFullYear();
+    const month = currentDate.getUTCMonth();
+    const day = currentDate.getUTCDate();
+    const hour = currentDate.getUTCHours();
+    const minute = currentDate.getUTCMinutes();
+    
+    // 分の開始時刻（秒を0に）
+    const minuteStart = new Date(Date.UTC(year, month, day, hour, minute, 0));
+    const minuteStartTimestamp = Math.floor(minuteStart.getTime() / 1000);
+    
+    // 現在の時刻までの歩み値データを抽出
+    const formingAyumiData = ayumiData.filter((item) => {
+      // 日付と時間をパース
+      const dateParts = item.date.split('/');
+      const timeParts = item.time.split(':');
+      
+      if (dateParts.length !== 3 || timeParts.length !== 3) return false;
+      
+      const itemYear = parseInt(dateParts[0], 10);
+      const itemMonth = parseInt(dateParts[1], 10) - 1;
+      const itemDay = parseInt(dateParts[2], 10);
+      const itemHour = parseInt(timeParts[0], 10);
+      const itemMinute = parseInt(timeParts[1], 10);
+      const itemSecond = parseInt(timeParts[2], 10);
+      
+      // UTCとしてDateオブジェクトを作成
+      const itemDate = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
+      const itemTimestamp = Math.floor(itemDate.getTime() / 1000);
+      
+      // 現在の分の開始時刻から現在の時刻までのデータ
+      return itemTimestamp >= minuteStartTimestamp && itemTimestamp <= currentTimestamp;
+    });
+    
+    if (formingAyumiData.length === 0) return null;
+    
+    // 四本値を計算
+    const prices = formingAyumiData.map(item => item.price);
+    const open = prices[0];
+    const close = prices[prices.length - 1];
+    const high = Math.max(...prices);
+    const low = Math.min(...prices);
+    
+    return {
+      time: minuteStartTimestamp,
+      open,
+      high,
+      low,
+      close,
+    };
+  };
+
   // シークバーの時刻に合わせて1分足データをフィルタリングする関数
   const getFilteredCandlestickData = (): CandlestickData[] | undefined => {
     if (!candlestickData || !timeRange) return undefined;
@@ -328,11 +387,22 @@ export default function Home() {
     currentDate.setUTCSeconds(0, 0); // 秒を0にして分の開始時刻に
     const currentMinuteStart = Math.floor(currentDate.getTime() / 1000);
     
-    return candlestickData.filter((candle) => {
+    // 完成した1分足データをフィルタリング
+    const completedCandles = candlestickData.filter((candle) => {
       const candleTime = typeof candle.time === 'number' ? candle.time : 0;
-      // 現在の分の開始時刻以下のデータのみを表示
-      return candleTime <= currentMinuteStart;
+      // 現在の分の開始時刻より前のデータのみを表示
+      return candleTime < currentMinuteStart;
     });
+    
+    // 形成中の1分足を計算
+    const formingCandle = calculateFormingCandle(currentTimestamp);
+    
+    // 形成中の1分足がある場合は追加
+    if (formingCandle) {
+      return [...completedCandles, formingCandle];
+    }
+    
+    return completedCandles;
   };
 
   return (
