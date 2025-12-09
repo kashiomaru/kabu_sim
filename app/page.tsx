@@ -815,7 +815,7 @@ export default function Home() {
                 <button
                   onClick={handleResetSeconds}
                   disabled={!isControlsActive}
-                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm min-w-0 ${
+                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 ${
                     isControlsActive
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
