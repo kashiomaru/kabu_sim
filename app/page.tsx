@@ -34,6 +34,28 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
 
+  // 11:30〜12:30の範囲をスキップする関数
+  const skipLunchTime = (timestamp: number): number => {
+    const date = new Date(timestamp * 1000);
+    const hour = date.getUTCHours();
+    const minute = date.getUTCMinutes();
+    const second = date.getUTCSeconds();
+    
+    // 11:30:00 から 12:30:00 の範囲をチェック
+    const isInLunchTime = (hour === 11 && minute >= 30) || (hour === 12 && minute < 30);
+    
+    if (isInLunchTime) {
+      // 12:30:00にジャンプ（同じ日の12:30:00のタイムスタンプを作成）
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth();
+      const day = date.getUTCDate();
+      const skipToDate = new Date(Date.UTC(year, month, day, 12, 30, 0));
+      return Math.floor(skipToDate.getTime() / 1000);
+    }
+    
+    return timestamp;
+  };
+
   // 再生/停止の制御
   useEffect(() => {
     if (isPlaying && isControlsActive && candlestickData && candlestickData.length > 0) {
@@ -66,7 +88,10 @@ export default function Home() {
           
           // 速度モードに応じて進める（sec: 1秒、min: 60秒）
           const stepSeconds = speedMode === 'sec' ? 1 : 60;
-          const newTimestamp = currentTimestamp + stepSeconds;
+          let newTimestamp = currentTimestamp + stepSeconds;
+          
+          // 11:30〜12:30の範囲をスキップ
+          newTimestamp = skipLunchTime(newTimestamp);
           
           // データの最後を超えた場合は停止
           if (newTimestamp > lastTime) {
