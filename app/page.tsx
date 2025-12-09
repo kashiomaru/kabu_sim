@@ -31,6 +31,7 @@ export default function Home() {
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
   const [speedMode, setSpeedMode] = useState<'min' | 'sec'>('sec'); // 速度モード（分/秒）
+  const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
 
   // 再生/停止の制御
   useEffect(() => {
@@ -339,6 +340,66 @@ export default function Home() {
     return { data: result.length > 0 ? result : null, decimalPlaces: maxDecimalPlaces, timeRange };
   };
 
+  // ファイルアップロードのハンドラー
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) {
+        // テキストエリアに表示
+        setCsvText(text);
+        // ファイル内容を直接処理して読み込む
+        // 状態更新が非同期のため、直接ファイル内容を処理
+        setTimeout(() => {
+          // CSVをパース
+          const ayumiData = parseCsv(text);
+          if (!ayumiData) {
+            alert('CSV形式が正しくありません');
+            setIsControlsActive(false);
+            setCandlestickData(undefined);
+            return;
+          }
+
+          // 1分足データを作成
+          const { data: oneMinuteData, decimalPlaces, timeRange } = createOneMinuteData(ayumiData);
+          if (!oneMinuteData) {
+            alert('1分足データの作成に失敗しました');
+            setIsControlsActive(false);
+            setCandlestickData(undefined);
+            setTimeRange(null);
+            return;
+          }
+
+          // 成功したらデータを設定し、コントロールをアクティブにする
+          setCandlestickData(oneMinuteData);
+          setAyumiData(ayumiData); // 元の歩み値データも保持
+          setPriceDecimalPlaces(decimalPlaces);
+          setTimeRange(timeRange);
+          setSeekValue(0); // シークバーを最初の位置にリセット
+          setIsControlsActive(true);
+          setIndicator('データ読み込み完了');
+        }, 0);
+      }
+    };
+    reader.onerror = () => {
+      alert('ファイルの読み込みに失敗しました');
+    };
+    reader.readAsText(file, 'UTF-8');
+    
+    // 同じファイルを再度選択できるようにリセット
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // ファイル選択ダイアログを開く
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   // 読み込みボタンのハンドラー
   const handleLoad = () => {
     if (!csvText.trim()) {
@@ -642,6 +703,19 @@ export default function Home() {
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
               />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".csv"
+                className="hidden"
+              />
+              <button 
+                onClick={handleUploadClick}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-2"
+              >
+                アップロード
+              </button>
               <button 
                 onClick={handleLoad}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
