@@ -161,6 +161,22 @@ export default function Home() {
     setSpeedMode((current) => current === 'sec' ? 'min' : 'sec');
   };
 
+  const handleResetSeconds = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    
+    // 現在の時刻から秒数を00にリセット
+    const currentDate = new Date(currentTimestamp * 1000);
+    currentDate.setUTCSeconds(0, 0); // 秒を00にリセット
+    const newTimestamp = Math.floor(currentDate.getTime() / 1000);
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
+    setIndicator('秒数リセット');
+  };
+
   // CSVをパースする関数
   const parseCsv = (csvText: string): AyumiData[] | null => {
     const lines = csvText.trim().split('\n');
@@ -769,6 +785,17 @@ export default function Home() {
                   }`}
                 >
                   {speedMode === 'sec' ? 'sec' : 'min'}
+                </button>
+                <button
+                  onClick={handleResetSeconds}
+                  disabled={!isControlsActive}
+                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm min-w-0 ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  00
                 </button>
               </div>
             </div>
