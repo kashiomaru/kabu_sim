@@ -31,6 +31,7 @@ export default function Home() {
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
   const [speedMode, setSpeedMode] = useState<'min' | 'sec'>('sec'); // 速度モード（分/秒）
+  const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 速度倍率（x1, x2, x3, x5, x10, x30, x60）
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
 
@@ -86,8 +87,8 @@ export default function Home() {
           const lastTimeValue = candlestickData[candlestickData.length - 1].time;
           const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
           
-          // 速度モードに応じて進める（sec: 1秒、min: 60秒）
-          const stepSeconds = speedMode === 'sec' ? 1 : 60;
+          // 速度モードに応じて進める（sec: 1秒、min: 60秒）、速度倍率を適用
+          const stepSeconds = (speedMode === 'sec' ? 1 : 60) * speedMultiplier;
           let newTimestamp = currentTimestamp + stepSeconds;
           
           // 11:30〜12:30の範囲をスキップ
@@ -145,7 +146,7 @@ export default function Home() {
         playIntervalRef.current = null;
       }
     };
-  }, [isPlaying, isControlsActive, candlestickData, speedMode]);
+  }, [isPlaying, isControlsActive, candlestickData, speedMode, speedMultiplier]);
 
   const handlePlay = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
@@ -184,6 +185,13 @@ export default function Home() {
 
   const handleSpeedModeToggle = () => {
     setSpeedMode((current) => current === 'sec' ? 'min' : 'sec');
+  };
+
+  const handleSpeedMultiplierToggle = () => {
+    const multipliers = [1, 2, 3, 5, 10, 30, 60];
+    const currentIndex = multipliers.indexOf(speedMultiplier);
+    const nextIndex = (currentIndex + 1) % multipliers.length;
+    setSpeedMultiplier(multipliers[nextIndex]);
   };
 
   const handleResetSeconds = () => {
@@ -810,6 +818,17 @@ export default function Home() {
                   }`}
                 >
                   {speedMode === 'sec' ? 'sec' : 'min'}
+                </button>
+                <button
+                  onClick={handleSpeedMultiplierToggle}
+                  disabled={!isControlsActive}
+                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  x{speedMultiplier}
                 </button>
                 <button
                   onClick={handleResetSeconds}
