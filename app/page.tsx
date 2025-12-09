@@ -30,7 +30,6 @@ export default function Home() {
   const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
-  const [speedMode, setSpeedMode] = useState<'min' | 'sec'>('sec'); // 速度モード（分/秒）
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 速度倍率（x1, x2, x3, x5, x10, x30, x60）
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
@@ -87,8 +86,8 @@ export default function Home() {
           const lastTimeValue = candlestickData[candlestickData.length - 1].time;
           const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
           
-          // 速度モードに応じて進める（sec: 1秒、min: 60秒）、速度倍率を適用
-          const stepSeconds = (speedMode === 'sec' ? 1 : 60) * speedMultiplier;
+          // 速度倍率を適用して進める（1秒 × 倍率）
+          const stepSeconds = 1 * speedMultiplier;
           let newTimestamp = currentTimestamp + stepSeconds;
           
           // 11:30〜12:30の範囲をスキップ
@@ -130,7 +129,7 @@ export default function Home() {
           
           return 100;
         });
-      }, speedMode === 'sec' ? 1000 : 1000); // 1秒ごとに更新（速度モードに応じて進む量は変わる）
+      }, 1000); // 1秒ごとに更新
     } else {
       // 停止中：タイマーをクリア
       if (playIntervalRef.current) {
@@ -146,7 +145,7 @@ export default function Home() {
         playIntervalRef.current = null;
       }
     };
-  }, [isPlaying, isControlsActive, candlestickData, speedMode, speedMultiplier]);
+  }, [isPlaying, isControlsActive, candlestickData, speedMultiplier]);
 
   const handlePlay = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
@@ -159,32 +158,28 @@ export default function Home() {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
     const currentTimestamp = getCurrentTimestamp();
-    // 速度モードに応じて戻す（sec: 1秒、min: 60秒）
-    const stepSeconds = speedMode === 'sec' ? 1 : 60;
+    // 速度倍率を適用して戻す
+    const stepSeconds = 1 * speedMultiplier;
     const newTimestamp = currentTimestamp - stepSeconds;
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
     setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
-    setIndicator(speedMode === 'sec' ? '1秒戻し' : '1分戻し');
+    setIndicator(`${speedMultiplier}秒戻し`);
   };
 
   const handleStepForward = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
     const currentTimestamp = getCurrentTimestamp();
-    // 速度モードに応じて進める（sec: 1秒、min: 60秒）
-    const stepSeconds = speedMode === 'sec' ? 1 : 60;
+    // 速度倍率を適用して進める
+    const stepSeconds = 1 * speedMultiplier;
     const newTimestamp = currentTimestamp + stepSeconds;
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
     setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
-    setIndicator(speedMode === 'sec' ? '1秒送り' : '1分送り');
-  };
-
-  const handleSpeedModeToggle = () => {
-    setSpeedMode((current) => current === 'sec' ? 'min' : 'sec');
+    setIndicator(`${speedMultiplier}秒送り`);
   };
 
   const handleSpeedMultiplierToggle = () => {
@@ -805,19 +800,6 @@ export default function Home() {
                   }`}
                 >
                   ⏭
-                </button>
-                <button
-                  onClick={handleSpeedModeToggle}
-                  disabled={!isControlsActive}
-                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm min-w-0 ${
-                    isControlsActive
-                      ? speedMode === 'sec'
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
-                  }`}
-                >
-                  {speedMode === 'sec' ? 'sec' : 'min'}
                 </button>
                 <button
                   onClick={handleSpeedMultiplierToggle}
