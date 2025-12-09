@@ -677,8 +677,9 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
           {/* 左側：チャートエリア */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-            <div className="w-full h-[calc(100%-4rem)]">
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col">
+            {/* チャート部分 */}
+            <div className="w-full flex-1 min-h-0 mb-4">
               {candlestickData ? (
                 <CandlestickChart 
                   height={600} 
@@ -695,41 +696,9 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* 右側：上段（テキストエリア）と下段（ボタンエリア） */}
-          <div className="lg:col-span-1 flex flex-col gap-6">
-            {/* 右上：テキストエリア */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex-1 flex flex-col min-h-0">
-              <textarea
-                className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
-                placeholder="歩み値（csv）をペースト"
-                value={csvText}
-                onChange={(e) => setCsvText(e.target.value)}
-              />
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".csv"
-                className="hidden"
-              />
-              <button 
-                onClick={handleUploadClick}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-2"
-              >
-                アップロード
-              </button>
-              <button 
-                onClick={handleLoad}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                読み込み
-              </button>
-            </div>
-
-            {/* 右下：ボタンエリア */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col">
+            {/* コントローラー部分 */}
+            <div className="w-full mt-4">
               {/* シークバー */}
               <div className="mb-4">
                 {/* 時間表示 */}
@@ -802,6 +771,37 @@ export default function Home() {
                   {speedMode === 'sec' ? 'sec' : 'min'}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* 右側：テキストエリア */}
+          <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col">
+              <textarea
+                className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
+                placeholder="歩み値（csv）をペースト"
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+              />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".csv"
+                className="hidden"
+              />
+              <button 
+                onClick={handleUploadClick}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-2"
+              >
+                アップロード
+              </button>
+              <button 
+                onClick={handleLoad}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+              >
+                読み込み
+              </button>
             </div>
           </div>
         </div>
