@@ -80,7 +80,7 @@ export default function CandlestickChart({
           visible: true,
         },
         horzLine: {
-          visible: true,
+          visible: true, // カーソル位置の横点線は表示
         },
       },
     });
@@ -94,6 +94,7 @@ export default function CandlestickChart({
       borderVisible: false,
       wickUpColor: upColor,
       wickDownColor: downColor,
+      priceLineVisible: false, // 現在値位置の横点線を非表示
     });
 
     seriesRef.current = candlestickSeries;
