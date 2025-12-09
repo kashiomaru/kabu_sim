@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi, ColorType } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, ColorType, IPriceLine } from 'lightweight-charts';
 
 interface CandlestickData {
   time: string | number;
@@ -18,6 +18,7 @@ interface CandlestickChartProps {
   upColor?: string; // 陽線の色
   downColor?: string; // 陰線の色
   backgroundColor?: string; // 背景色
+  reloadKey?: number; // CSV再読み込み時にインクリメントされるキー
 }
 
 export default function CandlestickChart({ 
@@ -26,11 +27,13 @@ export default function CandlestickChart({
   priceDecimalPlaces = 2,
   upColor = '#26a69a', // デフォルト: 緑
   downColor = '#ef5350', // デフォルト: 赤
-  backgroundColor = 'white' // デフォルト: 白
+  backgroundColor = 'white', // デフォルト: 白
+  reloadKey = 0 // デフォルト: 0
 }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const priceLineRef = useRef<IPriceLine | null>(null);
 
   // チャートの初期化（初回のみ）
   useEffect(() => {
@@ -99,6 +102,34 @@ export default function CandlestickChart({
 
     seriesRef.current = candlestickSeries;
 
+    // クリックイベントハンドラー
+    const handleClick = (param: any) => {
+      if (!chartRef.current || !seriesRef.current || !param.point) return;
+
+      // クリック位置のY座標から価格を取得
+      const price = seriesRef.current.coordinateToPrice(param.point.y);
+      if (price === null) return;
+
+      // 既存の価格線があれば削除
+      if (priceLineRef.current) {
+        seriesRef.current.removePriceLine(priceLineRef.current);
+        priceLineRef.current = null;
+      }
+
+      // 新しい赤い点線の価格線を追加
+      const priceLine = seriesRef.current.createPriceLine({
+        price: price,
+        color: '#ff0000', // 赤色
+        lineWidth: 1,
+        lineStyle: 1, // LineStyle.Dotted (点線)
+        axisLabelVisible: false, // ラベルを非表示
+      });
+
+      priceLineRef.current = priceLine;
+    };
+
+    chart.subscribeClick(handleClick);
+
     // リサイズハンドラー
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -112,6 +143,10 @@ export default function CandlestickChart({
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (priceLineRef.current && seriesRef.current) {
+        seriesRef.current.removePriceLine(priceLineRef.current);
+        priceLineRef.current = null;
+      }
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
@@ -143,6 +178,14 @@ export default function CandlestickChart({
       seriesRef.current.setData(data as any);
     }
   }, [data]);
+
+  // CSV再読み込み時に価格線を削除
+  useEffect(() => {
+    if (priceLineRef.current && seriesRef.current) {
+      seriesRef.current.removePriceLine(priceLineRef.current);
+      priceLineRef.current = null;
+    }
+  }, [reloadKey]);
 
   return (
     <div className="w-full">

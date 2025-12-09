@@ -32,6 +32,7 @@ export default function Home() {
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
   const [speedMode, setSpeedMode] = useState<'min' | 'sec'>('sec'); // 速度モード（分/秒）
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
+  const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
 
   // 再生/停止の制御
   useEffect(() => {
@@ -381,6 +382,7 @@ export default function Home() {
           setSeekValue(0); // シークバーを最初の位置にリセット
           setIsControlsActive(true);
           setIndicator('データ読み込み完了');
+          setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
         }, 0);
       }
     };
@@ -434,6 +436,7 @@ export default function Home() {
     setSeekValue(0); // シークバーを最初の位置にリセット
     setIsControlsActive(true);
     setIndicator('データ読み込み完了');
+    setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
   };
 
   // シークバーの値から現在のデータポイントのインデックスを取得する関数
@@ -684,6 +687,7 @@ export default function Home() {
                   upColor="#FF0000"
                   downColor="#00FFFF"
                   backgroundColor="#000000"
+                  reloadKey={reloadKey}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
