@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi, ColorType, IPriceLine } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, ColorType, IPriceLine, CandlestickSeries } from 'lightweight-charts';
 
 interface CandlestickData {
   time: string | number;
@@ -101,7 +101,7 @@ export default function CandlestickChart({
     chartRef.current = chart;
 
     // ローソク足シリーズの追加（初期値）
-    const candlestickSeries = chart.addCandlestickSeries({
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: upColor,
       downColor: downColor,
       borderVisible: false,
@@ -132,7 +132,8 @@ export default function CandlestickChart({
         color: '#ff0000', // 赤色
         lineWidth: 1,
         lineStyle: 1, // LineStyle.Dotted (点線)
-        axisLabelVisible: false, // ラベルを非表示
+        axisLabelVisible: true, // ラベルを表示
+        axisLabelColor: '#ffff00', // ラベルの背景色（黄色）
       });
 
       priceLineRef.current = priceLine;
