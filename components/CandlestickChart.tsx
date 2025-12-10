@@ -120,6 +120,9 @@ export default function CandlestickChart({
       const price = seriesRef.current.coordinateToPrice(param.point.y);
       if (price === null) return;
 
+      // 価格を最も近い整数値に丸める
+      const roundedPrice = Math.round(price);
+
       // 既存の価格線があれば削除
       if (priceLineRef.current) {
         seriesRef.current.removePriceLine(priceLineRef.current);
@@ -128,7 +131,7 @@ export default function CandlestickChart({
 
       // 新しい赤い点線の価格線を追加
       const priceLine = seriesRef.current.createPriceLine({
-        price: price,
+        price: roundedPrice, // 整数値に丸めた価格
         color: '#ff0000', // 赤色
         lineWidth: 1,
         lineStyle: 1, // LineStyle.Dotted (点線)
