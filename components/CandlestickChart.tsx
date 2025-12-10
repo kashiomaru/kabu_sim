@@ -76,6 +76,14 @@ export default function CandlestickChart({
           const minutes = String(date.getUTCMinutes()).padStart(2, '0');
           return `${hours}:${minutes}`;
         },
+        priceFormatter: (price: number) => {
+          // 小数点第1位まで表示し、小数点第1位が0の場合は小数点を表示しない
+          const rounded = Math.round(price * 10) / 10; // 小数点第1位で丸める
+          if (rounded % 1 === 0) {
+            return rounded.toString(); // 整数の場合は小数点なし
+          }
+          return rounded.toFixed(1); // 小数点がある場合は小数点第1位まで
+        },
       },
       crosshair: {
         mode: 0, // CrosshairMode.Normal - カーソル位置のY座標に対応する価格で横点線を表示
@@ -84,6 +92,8 @@ export default function CandlestickChart({
         },
         horzLine: {
           visible: true, // カーソル位置の横点線は表示
+          labelVisible: true, // 横点線の価格ラベルを表示
+          labelBackgroundColor: '#333333', // 横点線ラベルの背景色（黒寄りのグレー）
         },
       },
     });
