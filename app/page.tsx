@@ -31,7 +31,9 @@ export default function Home() {
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 速度倍率（x1, x2, x3, x5, x10, x30, x60）
+  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false); // 速度倍率ドロップダウンの開閉状態
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
+  const speedMenuRef = useRef<HTMLDivElement | null>(null); // 速度倍率メニューの参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
 
   // 11:30〜12:30の範囲をスキップする関数
@@ -182,12 +184,28 @@ export default function Home() {
     setIndicator(`${speedMultiplier}秒送り`);
   };
 
-  const handleSpeedMultiplierToggle = () => {
-    const multipliers = [1, 2, 3, 5, 10, 30, 60];
-    const currentIndex = multipliers.indexOf(speedMultiplier);
-    const nextIndex = (currentIndex + 1) % multipliers.length;
-    setSpeedMultiplier(multipliers[nextIndex]);
+  // 速度倍率を設定する関数
+  const handleSpeedMultiplierSelect = (multiplier: number) => {
+    setSpeedMultiplier(multiplier);
+    setIsSpeedMenuOpen(false);
   };
+
+  // メニュー外をクリックしたら閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (speedMenuRef.current && !speedMenuRef.current.contains(event.target as Node)) {
+        setIsSpeedMenuOpen(false);
+      }
+    };
+
+    if (isSpeedMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSpeedMenuOpen]);
 
   const handleResetSeconds = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
@@ -769,7 +787,7 @@ export default function Home() {
                 <button
                   onClick={handleStepBack}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 h-10 flex items-center justify-center ${
                     isControlsActive
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
@@ -780,7 +798,7 @@ export default function Home() {
                 <button
                   onClick={handlePlay}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-xl min-w-0 ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-xl min-w-0 h-10 flex items-center justify-center ${
                     isControlsActive
                       ? isPlaying
                         ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -793,7 +811,7 @@ export default function Home() {
                 <button
                   onClick={handleStepForward}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 h-10 flex items-center justify-center ${
                     isControlsActive
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
@@ -801,21 +819,40 @@ export default function Home() {
                 >
                   ⏭
                 </button>
-                <button
-                  onClick={handleSpeedMultiplierToggle}
-                  disabled={!isControlsActive}
-                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 ${
-                    isControlsActive
-                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
-                  }`}
-                >
-                  x{speedMultiplier}
-                </button>
+                <div className="relative" ref={speedMenuRef}>
+                  <button
+                    onClick={() => isControlsActive && setIsSpeedMenuOpen(!isSpeedMenuOpen)}
+                    disabled={!isControlsActive}
+                    className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 h-10 flex items-center justify-center ${
+                      isControlsActive
+                        ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    x{speedMultiplier}
+                  </button>
+                  {isSpeedMenuOpen && isControlsActive && (
+                    <div className="absolute bottom-full left-0 mb-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10 w-12">
+                      {[1, 2, 3, 5, 10, 30, 60].map((multiplier) => (
+                        <button
+                          key={multiplier}
+                          onClick={() => handleSpeedMultiplierSelect(multiplier)}
+                          className={`w-full text-center px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                            speedMultiplier === multiplier
+                              ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-semibold'
+                              : 'text-gray-800 dark:text-gray-200'
+                          }`}
+                        >
+                          x{multiplier}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={handleResetSeconds}
                   disabled={!isControlsActive}
-                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 ${
+                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 h-10 flex items-center justify-center ${
                     isControlsActive
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
