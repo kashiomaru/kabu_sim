@@ -36,9 +36,9 @@ export default function Home() {
   const speedMenuRef = useRef<HTMLDivElement | null>(null); // 速度倍率メニューの参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
 
-  // 11:30〜12:30の範囲をスキップする関数
+  // 11:30〜12:30の範囲をスキップする関数（timestampはミリ秒単位）
   const skipLunchTime = (timestamp: number, direction: 'forward' | 'backward' = 'forward'): number => {
-    const date = new Date(timestamp * 1000);
+    const date = new Date(timestamp); // ミリ秒単位なのでそのまま使用
     const hour = date.getUTCHours();
     const minute = date.getUTCMinutes();
     const second = date.getUTCSeconds();
@@ -54,11 +54,11 @@ export default function Home() {
       if (direction === 'forward') {
         // 進む方向：12:30:00にジャンプ
         const skipToDate = new Date(Date.UTC(year, month, day, 12, 30, 0));
-        return Math.floor(skipToDate.getTime() / 1000);
+        return skipToDate.getTime(); // ミリ秒単位で返す
       } else {
         // 戻る方向：11:30:00の前（11:29:59）にジャンプ
         const skipToDate = new Date(Date.UTC(year, month, day, 11, 29, 59));
-        return Math.floor(skipToDate.getTime() / 1000);
+        return skipToDate.getTime(); // ミリ秒単位で返す
       }
     }
     
@@ -86,18 +86,19 @@ export default function Home() {
             ? candlestickData[nextIndex].time 
             : 0) as number;
           
-          // データポイント間を補間して現在の時刻を計算
+          // データポイント間を補間して現在の時刻を計算（秒単位）
           const fraction = exactIndex - currentIndex;
           const timeDiff = nextDataTime - currentDataTime;
-          const currentTimestamp = currentDataTime + (timeDiff * fraction);
+          const currentTimestampSeconds = currentDataTime + (timeDiff * fraction);
+          const currentTimestamp = currentTimestampSeconds * 1000; // ミリ秒単位に変換
           
-          // データの最後の時刻を取得
+          // データの最後の時刻を取得（秒単位をミリ秒単位に変換）
           const lastTimeValue = candlestickData[candlestickData.length - 1].time;
-          const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
+          const lastTime = ((typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number) * 1000; // ミリ秒単位
           
-          // 速度倍率を適用して進める（1秒 × 倍率）
-          const stepSeconds = 1 * speedMultiplier;
-          let newTimestamp = currentTimestamp + stepSeconds;
+          // 速度倍率を適用して進める（1秒 × 倍率、ミリ秒単位）
+          const stepMilliseconds = 1000 * speedMultiplier;
+          let newTimestamp = currentTimestamp + stepMilliseconds;
           
           // 11:30〜12:30の範囲をスキップ（進む方向）
           newTimestamp = skipLunchTime(newTimestamp, 'forward');
@@ -110,19 +111,20 @@ export default function Home() {
           }
           
           // 新しい時刻に対応するシークバーの値を計算
-          if (newTimestamp <= (typeof candlestickData[0].time === 'number' ? candlestickData[0].time : 0)) {
+          const firstTime = ((typeof candlestickData[0].time === 'number' ? candlestickData[0].time : 0) as number) * 1000; // ミリ秒単位
+          if (newTimestamp <= firstTime) {
             return 0;
           }
           if (newTimestamp >= lastTime) {
             return 100;
           }
           
-          // 時刻がどのデータポイントの範囲内にあるかを検索
+          // 時刻がどのデータポイントの範囲内にあるかを検索（ミリ秒単位で比較）
           for (let i = 0; i < candlestickData.length - 1; i++) {
             const currentTimeValue = candlestickData[i].time;
             const nextTimeValue = candlestickData[i + 1].time;
-            const currentTime = (typeof currentTimeValue === 'number' ? currentTimeValue : 0) as number;
-            const nextTime = (typeof nextTimeValue === 'number' ? nextTimeValue : 0) as number;
+            const currentTime = ((typeof currentTimeValue === 'number' ? currentTimeValue : 0) as number) * 1000; // ミリ秒単位
+            const nextTime = ((typeof nextTimeValue === 'number' ? nextTimeValue : 0) as number) * 1000; // ミリ秒単位
             
             if (newTimestamp >= currentTime && newTimestamp <= nextTime) {
               // データポイント間を補間
@@ -166,10 +168,10 @@ export default function Home() {
   const handleStepBack = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
-    const currentTimestamp = getCurrentTimestamp();
-    // 速度倍率を適用して戻す
-    const stepSeconds = 1 * speedMultiplier;
-    let newTimestamp = currentTimestamp - stepSeconds;
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
+    // 速度倍率を適用して戻す（ミリ秒単位）
+    const stepMilliseconds = 1000 * speedMultiplier;
+    let newTimestamp = currentTimestamp - stepMilliseconds;
     
     // 11:30〜12:30の範囲をスキップ（戻る方向）
     newTimestamp = skipLunchTime(newTimestamp, 'backward');
@@ -183,10 +185,10 @@ export default function Home() {
   const handleStepBack10 = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
-    const currentTimestamp = getCurrentTimestamp();
-    // 10倍の時間を戻す（速度倍率も適用）
-    const stepSeconds = 10 * speedMultiplier;
-    let newTimestamp = currentTimestamp - stepSeconds;
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
+    // 10倍の時間を戻す（速度倍率も適用、ミリ秒単位）
+    const stepMilliseconds = 10000 * speedMultiplier;
+    let newTimestamp = currentTimestamp - stepMilliseconds;
     
     // 11:30〜12:30の範囲をスキップ（戻る方向）
     newTimestamp = skipLunchTime(newTimestamp, 'backward');
@@ -200,10 +202,10 @@ export default function Home() {
   const handleStepForward = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
-    const currentTimestamp = getCurrentTimestamp();
-    // 速度倍率を適用して進める
-    const stepSeconds = 1 * speedMultiplier;
-    let newTimestamp = currentTimestamp + stepSeconds;
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
+    // 速度倍率を適用して進める（ミリ秒単位）
+    const stepMilliseconds = 1000 * speedMultiplier;
+    let newTimestamp = currentTimestamp + stepMilliseconds;
     
     // 11:30〜12:30の範囲をスキップ（進む方向）
     newTimestamp = skipLunchTime(newTimestamp, 'forward');
@@ -217,10 +219,10 @@ export default function Home() {
   const handleStepForward10 = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
-    const currentTimestamp = getCurrentTimestamp();
-    // 10倍の時間を進める（速度倍率も適用）
-    const stepSeconds = 10 * speedMultiplier;
-    let newTimestamp = currentTimestamp + stepSeconds;
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
+    // 10倍の時間を進める（速度倍率も適用、ミリ秒単位）
+    const stepMilliseconds = 10000 * speedMultiplier;
+    let newTimestamp = currentTimestamp + stepMilliseconds;
     
     // 11:30〜12:30の範囲をスキップ（進む方向）
     newTimestamp = skipLunchTime(newTimestamp, 'forward');
@@ -257,12 +259,12 @@ export default function Home() {
   const handleResetSeconds = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
-    const currentTimestamp = getCurrentTimestamp();
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
     
     // 現在の時刻から秒数を00にリセット
-    const currentDate = new Date(currentTimestamp * 1000);
+    const currentDate = new Date(currentTimestamp); // ミリ秒単位なのでそのまま使用
     currentDate.setUTCSeconds(0, 0); // 秒を00にリセット
-    const newTimestamp = Math.floor(currentDate.getTime() / 1000);
+    const newTimestamp = currentDate.getTime(); // ミリ秒単位で返す
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
@@ -556,7 +558,7 @@ export default function Home() {
     return Math.round((maxIndex * seekValue) / 100);
   };
 
-  // シークバーの値から現在の時刻（Unixタイムスタンプ）を取得する関数
+  // シークバーの値から現在の時刻（Unixタイムスタンプ、ミリ秒単位）を取得する関数
   const getCurrentTimestamp = (): number => {
     if (!candlestickData || candlestickData.length === 0) return 0;
     
@@ -565,14 +567,14 @@ export default function Home() {
     const currentTime = typeof currentData.time === 'number' ? currentData.time : 0;
     
     // シークバーの値から秒の部分を計算（データポイント間を補間）
-    if (candlestickData.length === 1) return currentTime;
+    if (candlestickData.length === 1) return currentTime * 1000; // ミリ秒単位に変換
     
     const maxIndex = candlestickData.length - 1;
     const exactIndex = (maxIndex * seekValue) / 100;
     const currentIndex = Math.floor(exactIndex);
     const nextIndex = Math.min(currentIndex + 1, maxIndex);
     
-    if (currentIndex === nextIndex) return currentTime;
+    if (currentIndex === nextIndex) return currentTime * 1000; // ミリ秒単位に変換
     
     const currentDataTime = typeof candlestickData[currentIndex].time === 'number' 
       ? candlestickData[currentIndex].time 
@@ -581,20 +583,21 @@ export default function Home() {
       ? candlestickData[nextIndex].time 
       : 0;
     
-    // データポイント間を補間（秒の部分を計算）
+    // データポイント間を補間（秒単位で計算後、ミリ秒単位に変換）
     const fraction = exactIndex - currentIndex;
     const timeDiff = nextDataTime - currentDataTime;
-    return currentDataTime + (timeDiff * fraction);
+    const timestampSeconds = currentDataTime + (timeDiff * fraction);
+    return timestampSeconds * 1000; // ミリ秒単位に変換
   };
 
   // シークバーの値から時間を計算する関数
   const getTimeFromSeekValue = (): string => {
     if (!candlestickData || candlestickData.length === 0) return '00:00:00';
     
-    const currentTime = getCurrentTimestamp();
+    const currentTime = getCurrentTimestamp(); // ミリ秒単位
     
-    // Unixタイムスタンプ（秒）をDateオブジェクトに変換
-    const date = new Date(currentTime * 1000);
+    // Unixタイムスタンプ（ミリ秒）をDateオブジェクトに変換
+    const date = new Date(currentTime);
     
     // 00:00:00形式でフォーマット
     const hours = String(date.getUTCHours()).padStart(2, '0');
@@ -604,9 +607,12 @@ export default function Home() {
     return `${hours}:${minutes}:${seconds}`;
   };
 
-  // 時刻からシークバーの値を計算する関数
+  // 時刻からシークバーの値を計算する関数（timestampはミリ秒単位）
   const getSeekValueFromTimestamp = (timestamp: number): number => {
     if (!candlestickData || candlestickData.length === 0) return 0;
+    
+    // ミリ秒単位のタイムスタンプを秒単位に変換して比較
+    const timestampSeconds = timestamp / 1000;
     
     // 時刻がデータ範囲外の場合は、範囲内に制限
     const firstTimeValue = candlestickData[0].time;
@@ -614,8 +620,8 @@ export default function Home() {
     const firstTime = (typeof firstTimeValue === 'number' ? firstTimeValue : 0) as number;
     const lastTime = (typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number;
     
-    if (timestamp <= firstTime) return 0;
-    if (timestamp >= lastTime) return 100;
+    if (timestampSeconds <= firstTime) return 0;
+    if (timestampSeconds >= lastTime) return 100;
     
     // 時刻がどのデータポイントの範囲内にあるかを検索
     for (let i = 0; i < candlestickData.length - 1; i++) {
@@ -624,13 +630,13 @@ export default function Home() {
       const currentTime = (typeof currentTimeValue === 'number' ? currentTimeValue : 0) as number;
       const nextTime = (typeof nextTimeValue === 'number' ? nextTimeValue : 0) as number;
       
-      if (timestamp >= currentTime && timestamp <= nextTime) {
+      if (timestampSeconds >= currentTime && timestampSeconds <= nextTime) {
         // データポイント間を補間
         const timeDiff = nextTime - currentTime;
         if (timeDiff === 0) {
           return (i * 100) / (candlestickData.length - 1);
         }
-        const fraction = (timestamp - currentTime) / timeDiff;
+        const fraction = (timestampSeconds - currentTime) / timeDiff;
         const exactIndex = i + fraction;
         return (exactIndex * 100) / (candlestickData.length - 1);
       }
@@ -639,12 +645,12 @@ export default function Home() {
     return 100;
   };
 
-  // 形成中の1分足を計算する関数
+  // 形成中の1分足を計算する関数（currentTimestampはミリ秒単位）
   const calculateFormingCandle = (currentTimestamp: number): CandlestickData | null => {
     if (!ayumiData || ayumiData.length === 0) return null;
     
     // 現在の時刻が属する分の開始時刻を計算
-    const currentDate = new Date(currentTimestamp * 1000);
+    const currentDate = new Date(currentTimestamp); // ミリ秒単位なのでそのまま使用
     const year = currentDate.getUTCFullYear();
     const month = currentDate.getUTCMonth();
     const day = currentDate.getUTCDate();
@@ -659,7 +665,8 @@ export default function Home() {
     // 現在の分の開始時刻を計算（形成中の1分足は現在の分）
     // 例：10:12:01の時点では、10:12:00の1分足が形成中
     const currentMinuteStart = new Date(Date.UTC(year, month, day, hour, minute, 0));
-    const currentMinuteStartTimestamp = Math.floor(currentMinuteStart.getTime() / 1000);
+    const currentMinuteStartTimestamp = Math.floor(currentMinuteStart.getTime() / 1000); // 秒単位（データ形式に合わせる）
+    const currentTimestampSeconds = Math.floor(currentTimestamp / 1000); // 秒単位に変換して比較
     
     // 現在の分の開始時刻から現在の時刻までの歩み値データを抽出（インデックスも保持）
     const formingAyumiDataWithIndex = ayumiData
@@ -680,10 +687,10 @@ export default function Home() {
         
         // UTCとしてDateオブジェクトを作成
         const itemDate = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
-        const itemTimestamp = Math.floor(itemDate.getTime() / 1000);
+        const itemTimestamp = Math.floor(itemDate.getTime() / 1000); // 秒単位
         
-        // 現在の分の開始時刻から現在の時刻までのデータ
-        return itemTimestamp >= currentMinuteStartTimestamp && itemTimestamp <= currentTimestamp;
+        // 現在の分の開始時刻から現在の時刻までのデータ（秒単位で比較）
+        return itemTimestamp >= currentMinuteStartTimestamp && itemTimestamp <= currentTimestampSeconds;
       });
     
     if (formingAyumiDataWithIndex.length === 0) return null;
@@ -748,14 +755,14 @@ export default function Home() {
   const getFilteredCandlestickData = (): CandlestickData[] | undefined => {
     if (!candlestickData || !timeRange) return undefined;
     
-    const currentTimestamp = getCurrentTimestamp();
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
     
     // 現在の時刻までの1分足データをフィルタリング
     // 例：09:30:20の場合、09:30:00までのデータを表示（09:31:00は表示しない）
     // 秒を0にして分単位で比較するため、現在の時刻の分の開始時刻（秒を0にした時刻）までを表示
-    const currentDate = new Date(currentTimestamp * 1000);
+    const currentDate = new Date(currentTimestamp); // ミリ秒単位なのでそのまま使用
     currentDate.setUTCSeconds(0, 0); // 秒を0にして分の開始時刻に
-    const currentMinuteStart = Math.floor(currentDate.getTime() / 1000);
+    const currentMinuteStart = Math.floor(currentDate.getTime() / 1000); // 秒単位（データ形式に合わせる）
     
     // 完成した1分足データをフィルタリング
     const completedCandles = candlestickData.filter((candle) => {
