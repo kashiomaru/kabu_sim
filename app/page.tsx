@@ -170,6 +170,20 @@ export default function Home() {
     setIndicator(`${speedMultiplier}秒戻し`);
   };
 
+  const handleStepBack10 = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    // 10倍の時間を戻す（速度倍率も適用）
+    const stepSeconds = 10 * speedMultiplier;
+    const newTimestamp = currentTimestamp - stepSeconds;
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
+    setIndicator(`${10 * speedMultiplier}秒戻し`);
+  };
+
   const handleStepForward = () => {
     if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
     
@@ -182,6 +196,20 @@ export default function Home() {
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
     setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
     setIndicator(`${speedMultiplier}秒送り`);
+  };
+
+  const handleStepForward10 = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp();
+    // 10倍の時間を進める（速度倍率も適用）
+    const stepSeconds = 10 * speedMultiplier;
+    const newTimestamp = currentTimestamp + stepSeconds;
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
+    setIndicator(`${10 * speedMultiplier}秒送り`);
   };
 
   // 速度倍率を設定する関数
@@ -785,6 +813,17 @@ export default function Home() {
               {/* ボタン群 */}
               <div className="flex gap-2">
                 <button
+                  onClick={handleStepBack10}
+                  disabled={!isControlsActive}
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 h-10 flex items-center justify-center ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  ⏮ "
+                </button>
+                <button
                   onClick={handleStepBack}
                   disabled={!isControlsActive}
                   className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 h-10 flex items-center justify-center ${
@@ -798,7 +837,7 @@ export default function Home() {
                 <button
                   onClick={handlePlay}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-xl min-w-0 h-10 flex items-center justify-center ${
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 h-10 flex items-center justify-center ${
                     isControlsActive
                       ? isPlaying
                         ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -818,6 +857,17 @@ export default function Home() {
                   }`}
                 >
                   ⏭
+                </button>
+                <button
+                  onClick={handleStepForward10}
+                  disabled={!isControlsActive}
+                  className={`flex-1 font-semibold py-2 px-2 rounded-lg transition-colors duration-200 text-lg min-w-0 h-10 flex items-center justify-center ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  ⏭ "
                 </button>
                 <div className="relative" ref={speedMenuRef}>
                   <button
