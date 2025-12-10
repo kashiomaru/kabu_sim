@@ -37,7 +37,7 @@ export default function Home() {
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
 
   // 11:30〜12:30の範囲をスキップする関数
-  const skipLunchTime = (timestamp: number): number => {
+  const skipLunchTime = (timestamp: number, direction: 'forward' | 'backward' = 'forward'): number => {
     const date = new Date(timestamp * 1000);
     const hour = date.getUTCHours();
     const minute = date.getUTCMinutes();
@@ -47,12 +47,19 @@ export default function Home() {
     const isInLunchTime = (hour === 11 && minute >= 30) || (hour === 12 && minute < 30);
     
     if (isInLunchTime) {
-      // 12:30:00にジャンプ（同じ日の12:30:00のタイムスタンプを作成）
       const year = date.getUTCFullYear();
       const month = date.getUTCMonth();
       const day = date.getUTCDate();
-      const skipToDate = new Date(Date.UTC(year, month, day, 12, 30, 0));
-      return Math.floor(skipToDate.getTime() / 1000);
+      
+      if (direction === 'forward') {
+        // 進む方向：12:30:00にジャンプ
+        const skipToDate = new Date(Date.UTC(year, month, day, 12, 30, 0));
+        return Math.floor(skipToDate.getTime() / 1000);
+      } else {
+        // 戻る方向：11:30:00の前（11:29:59）にジャンプ
+        const skipToDate = new Date(Date.UTC(year, month, day, 11, 29, 59));
+        return Math.floor(skipToDate.getTime() / 1000);
+      }
     }
     
     return timestamp;
@@ -92,8 +99,8 @@ export default function Home() {
           const stepSeconds = 1 * speedMultiplier;
           let newTimestamp = currentTimestamp + stepSeconds;
           
-          // 11:30〜12:30の範囲をスキップ
-          newTimestamp = skipLunchTime(newTimestamp);
+          // 11:30〜12:30の範囲をスキップ（進む方向）
+          newTimestamp = skipLunchTime(newTimestamp, 'forward');
           
           // データの最後を超えた場合は停止
           if (newTimestamp > lastTime) {
@@ -162,7 +169,10 @@ export default function Home() {
     const currentTimestamp = getCurrentTimestamp();
     // 速度倍率を適用して戻す
     const stepSeconds = 1 * speedMultiplier;
-    const newTimestamp = currentTimestamp - stepSeconds;
+    let newTimestamp = currentTimestamp - stepSeconds;
+    
+    // 11:30〜12:30の範囲をスキップ（戻る方向）
+    newTimestamp = skipLunchTime(newTimestamp, 'backward');
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
@@ -176,7 +186,10 @@ export default function Home() {
     const currentTimestamp = getCurrentTimestamp();
     // 10倍の時間を戻す（速度倍率も適用）
     const stepSeconds = 10 * speedMultiplier;
-    const newTimestamp = currentTimestamp - stepSeconds;
+    let newTimestamp = currentTimestamp - stepSeconds;
+    
+    // 11:30〜12:30の範囲をスキップ（戻る方向）
+    newTimestamp = skipLunchTime(newTimestamp, 'backward');
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
@@ -190,7 +203,10 @@ export default function Home() {
     const currentTimestamp = getCurrentTimestamp();
     // 速度倍率を適用して進める
     const stepSeconds = 1 * speedMultiplier;
-    const newTimestamp = currentTimestamp + stepSeconds;
+    let newTimestamp = currentTimestamp + stepSeconds;
+    
+    // 11:30〜12:30の範囲をスキップ（進む方向）
+    newTimestamp = skipLunchTime(newTimestamp, 'forward');
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
@@ -204,7 +220,10 @@ export default function Home() {
     const currentTimestamp = getCurrentTimestamp();
     // 10倍の時間を進める（速度倍率も適用）
     const stepSeconds = 10 * speedMultiplier;
-    const newTimestamp = currentTimestamp + stepSeconds;
+    let newTimestamp = currentTimestamp + stepSeconds;
+    
+    // 11:30〜12:30の範囲をスキップ（進む方向）
+    newTimestamp = skipLunchTime(newTimestamp, 'forward');
     
     // 新しい時刻に対応するシークバーの値を計算
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
