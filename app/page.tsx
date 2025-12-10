@@ -68,7 +68,7 @@ export default function Home() {
   // 再生/停止の制御
   useEffect(() => {
     if (isPlaying && isControlsActive && candlestickData && candlestickData.length > 0) {
-      // 再生中：1秒ごとにシークバーを更新
+      // 再生中：100msごとにシークバーを更新（ミリ秒単位での進みを実現）
       playIntervalRef.current = setInterval(() => {
         setSeekValue((currentSeekValue) => {
           // 現在のシークバーの値から時刻を計算
@@ -96,8 +96,9 @@ export default function Home() {
           const lastTimeValue = candlestickData[candlestickData.length - 1].time;
           const lastTime = ((typeof lastTimeValue === 'number' ? lastTimeValue : 0) as number) * 1000; // ミリ秒単位
           
-          // 速度倍率を適用して進める（1秒 × 倍率、ミリ秒単位）
-          const stepMilliseconds = 1000 * speedMultiplier;
+          // 速度倍率を適用して進める（100ms × 倍率 × 10 = 1秒 × 倍率、ミリ秒単位）
+          // 100msごとに更新するので、1秒進むには100ms × 10回 = 1000ms
+          const stepMilliseconds = 100 * speedMultiplier;
           let newTimestamp = currentTimestamp + stepMilliseconds;
           
           // 11:30〜12:30の範囲をスキップ（進む方向）
@@ -140,7 +141,7 @@ export default function Home() {
           
           return 100;
         });
-      }, 1000); // 1秒ごとに更新
+      }, 100); // 100msごとに更新（ミリ秒単位での進みを実現）
     } else {
       // 停止中：タイマーをクリア
       if (playIntervalRef.current) {
@@ -592,19 +593,27 @@ export default function Home() {
 
   // シークバーの値から時間を計算する関数
   const getTimeFromSeekValue = (): string => {
-    if (!candlestickData || candlestickData.length === 0) return '00:00:00';
+    if (!candlestickData || candlestickData.length === 0) return '00:00:00.0';
     
     const currentTime = getCurrentTimestamp(); // ミリ秒単位
     
     // Unixタイムスタンプ（ミリ秒）をDateオブジェクトに変換
     const date = new Date(currentTime);
     
-    // 00:00:00形式でフォーマット
+    // 00:00:00.0形式でフォーマット（ミリ秒の下2桁が00の場合は非表示）
     const hours = String(date.getUTCHours()).padStart(2, '0');
     const minutes = String(date.getUTCMinutes()).padStart(2, '0');
     const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+    const milliseconds = date.getUTCMilliseconds();
     
-    return `${hours}:${minutes}:${seconds}`;
+    // ミリ秒の下2桁が00の場合は.0だけ表示、それ以外は.000形式で表示
+    if (milliseconds % 100 === 0) {
+      const tenths = Math.floor(milliseconds / 100);
+      return `${hours}:${minutes}:${seconds}.${tenths}`;
+    } else {
+      const millisecondsStr = String(milliseconds).padStart(3, '0');
+      return `${hours}:${minutes}:${seconds}.${millisecondsStr}`;
+    }
   };
 
   // 時刻からシークバーの値を計算する関数（timestampはミリ秒単位）
