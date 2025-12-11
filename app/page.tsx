@@ -17,6 +17,7 @@ interface AyumiData {
   price: number;
   volume: number;
   priceDecimalPlaces: number; // 価格の小数点桁数
+  millisecond?: number; // 補助的なミリ秒情報（同じ秒内の順序に基づく）
 }
 
 export default function Home() {
@@ -332,7 +333,42 @@ export default function Home() {
       data.push({ date, time, price, volume, priceDecimalPlaces });
     }
 
-    return data.length > 0 ? data : null;
+    if (data.length === 0) return null;
+
+    // 同じ秒内の歩み値をグループ化してミリ秒を割り当て
+    // 日付と時間（秒まで）をキーとしてグループ化
+    const groupedBySecond = new Map<string, AyumiData[]>();
+    
+    for (const item of data) {
+      // 日付と時間から秒までのキーを作成（例: "2025/12/05_15:30:45"）
+      const timeParts = item.time.split(':');
+      if (timeParts.length !== 3) continue;
+      
+      const secondKey = `${item.date}_${timeParts[0]}:${timeParts[1]}:${timeParts[2]}`;
+      
+      if (!groupedBySecond.has(secondKey)) {
+        groupedBySecond.set(secondKey, []);
+      }
+      groupedBySecond.get(secondKey)!.push(item);
+    }
+
+    // 各グループに対してミリ秒を割り当て
+    for (const [secondKey, items] of groupedBySecond) {
+      const count = items.length;
+      
+      // 同じ秒内の歩み値を均等に割り当て
+      // dataは時系列降順なので、itemsも降順（items[0]が最新、items[count-1]が最古）
+      // 古いデータに小さいミリ秒を割り当てるため、indexを逆順にする
+      // 例：2つの場合、古いデータに0ms、新しいデータに500ms
+      // 例：3つの場合、古いデータに0ms、中間に333ms、新しいデータに666ms
+      items.forEach((item, index) => {
+        // 逆順のインデックスを使用（古いデータが先に適用されるように）
+        const reverseIndex = count - 1 - index;
+        item.millisecond = Math.floor((1000 / count) * reverseIndex);
+      });
+    }
+
+    return data;
   };
 
   // 1分足データを作成する関数（時系列降順を考慮）
@@ -675,9 +711,9 @@ export default function Home() {
     // 例：10:12:01の時点では、10:12:00の1分足が形成中
     const currentMinuteStart = new Date(Date.UTC(year, month, day, hour, minute, 0));
     const currentMinuteStartTimestamp = Math.floor(currentMinuteStart.getTime() / 1000); // 秒単位（データ形式に合わせる）
-    const currentTimestampSeconds = Math.floor(currentTimestamp / 1000); // 秒単位に変換して比較
     
     // 現在の分の開始時刻から現在の時刻までの歩み値データを抽出（インデックスも保持）
+    // ミリ秒情報を使用してより正確に判定
     const formingAyumiDataWithIndex = ayumiData
       .map((item, index) => ({ item, originalIndex: index }))
       .filter(({ item }) => {
@@ -694,18 +730,49 @@ export default function Home() {
         const itemMinute = parseInt(timeParts[1], 10);
         const itemSecond = parseInt(timeParts[2], 10);
         
-        // UTCとしてDateオブジェクトを作成
-        const itemDate = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
-        const itemTimestamp = Math.floor(itemDate.getTime() / 1000); // 秒単位
+        // createOneMinuteDataと同じロジック：最終的にはUTCとしてタイムスタンプを作成
+        // createOneMinuteDataでは、new Date(year, month, day, hour, minute, second)でローカルタイムゾーンとして解釈しているが、
+        // 最終的にはUTCとしてタイムスタンプを作成している（467行目）
+        // ここでも同じロジックを使う：UTCとしてタイムスタンプを作成
+        const itemDateUTC = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
+        const itemTimestampSeconds = Math.floor(itemDateUTC.getTime() / 1000); // 秒単位
         
-        // 現在の分の開始時刻から現在の時刻までのデータ（秒単位で比較）
-        return itemTimestamp >= currentMinuteStartTimestamp && itemTimestamp <= currentTimestampSeconds;
+        // ミリ秒情報を取得（なければ0）
+        const itemMillisecond = item.millisecond ?? 0;
+        
+        // ミリ秒を含めたタイムスタンプ（ミリ秒単位）
+        const itemTimestampMs = itemTimestampSeconds * 1000 + itemMillisecond;
+        
+        // 現在のタイムスタンプから秒とミリ秒を取得
+        const currentSecond = Math.floor(currentTimestamp / 1000);
+        const currentMsInSecond = currentTimestamp % 1000;
+        const itemSecondValue = itemTimestampSeconds;
+        
+        // 歩み値が現在の分に属するかどうかを確認（分単位で比較）
+        // createOneMinuteDataと同じロジック：UTCとしてタイムスタンプを作成
+        const itemMinuteStart = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, 0));
+        const itemMinuteStartTimestamp = Math.floor(itemMinuteStart.getTime() / 1000);
+        
+        // 現在の分の開始時刻と一致しない場合は除外（現在の分のデータのみを含める）
+        if (itemMinuteStartTimestamp !== currentMinuteStartTimestamp) {
+          return false;
+        }
+        
+        // 同じ秒内の場合、ミリ秒で比較
+        if (currentSecond === itemSecondValue) {
+          // 歩み値のミリ秒が現在のミリ秒以下であれば反映される
+          return itemMillisecond <= currentMsInSecond;
+        }
+        
+        // 異なる秒の場合、現在のタイムスタンプ以下であれば反映される
+        return itemTimestampMs <= currentTimestamp;
       });
     
     if (formingAyumiDataWithIndex.length === 0) return null;
     
-    // 時系列順（古い順）にソート、同じ秒数の場合は元の順序（originalIndex）を保持
+    // 時系列順（古い順）にソート、ミリ秒情報も考慮
     // ayumiDataは時系列降順なので、同じ秒数の場合はoriginalIndexが小さい方が新しいデータ
+    // createOneMinuteDataと同じロジックでソートする
     const sortedAyumiData = [...formingAyumiDataWithIndex].sort((a, b) => {
       const datePartsA = a.item.date.split('/');
       const timePartsA = a.item.time.split(':');
@@ -729,12 +796,15 @@ export default function Home() {
       const minuteB = parseInt(timePartsB[1], 10);
       const secondB = parseInt(timePartsB[2], 10);
       
+      // タイムスタンプを計算（ミリ秒を含む）
       const dateA = new Date(Date.UTC(yearA, monthA, dayA, hourA, minuteA, secondA));
       const dateB = new Date(Date.UTC(yearB, monthB, dayB, hourB, minuteB, secondB));
+      const timestampA = dateA.getTime() + (a.item.millisecond ?? 0);
+      const timestampB = dateB.getTime() + (b.item.millisecond ?? 0);
       
-      const timeDiff = dateA.getTime() - dateB.getTime();
+      const timeDiff = timestampA - timestampB;
       
-      // 同じ秒数の場合、元の順序を保持（originalIndexが小さい方が新しいデータなので、降順に並べる）
+      // タイムスタンプが同じ場合、元の順序を保持（originalIndexが小さい方が新しいデータなので、降順に並べる）
       if (timeDiff === 0) {
         // ayumiDataは時系列降順なので、originalIndexが小さい方が新しい
         // 時系列順（古い順）にソートするため、originalIndexが大きい方が古い
@@ -745,7 +815,10 @@ export default function Home() {
     });
     
     // 四本値を計算（時系列順にソート済み）
+    // createOneMinuteDataと同じロジック：最初の歩み値がopen、最後の歩み値がclose
     const prices = sortedAyumiData.map(({ item }) => item.price);
+    if (prices.length === 0) return null;
+    
     const open = prices[0]; // 分の開始時刻の価格（最初）
     const close = prices[prices.length - 1]; // 現在の時刻の価格（最後）
     const high = Math.max(...prices);
