@@ -23,12 +23,23 @@ interface AyumiData {
   millisecond?: number; // 補助的なミリ秒情報（同じ秒内の順序に基づく）
 }
 
+interface LoadedFile {
+  id: string; // 一意のID（タイムスタンプベース）
+  fileName: string;
+  csvText: string;
+  ayumiData: AyumiData[];
+  candlestickData: CandlestickData[];
+  priceDecimalPlaces: number;
+  timeRange: { min: number; max: number } | null;
+  loadedAt: number; // 読み込み日時（タイムスタンプ）
+}
+
 export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [indicator, setIndicator] = useState('準備中');
   const [seekValue, setSeekValue] = useState(0);
-  const [csvText, setCsvText] = useState('');
-  const [fileName, setFileName] = useState<string | null>(null); // 読み込んだファイル名
+  const [loadedFiles, setLoadedFiles] = useState<LoadedFile[]>([]); // 読み込んだファイル一覧
+  const [activeFileId, setActiveFileId] = useState<string | null>(null); // 現在アクティブなファイルID
   const [candlestickData, setCandlestickData] = useState<CandlestickData[] | undefined>(undefined);
   const [ayumiData, setAyumiData] = useState<AyumiData[] | null>(null); // 元の歩み値データを保持
   const [isControlsActive, setIsControlsActive] = useState(false);
@@ -40,6 +51,27 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
   const speedMenuRef = useRef<HTMLDivElement | null>(null); // 速度倍率メニューの参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
+
+  // アクティブファイルのデータを取得
+  const activeFile = loadedFiles.find(f => f.id === activeFileId) || null;
+  const csvText = activeFile?.csvText || '';
+  const fileName = activeFile?.fileName || null;
+
+  // ファイル選択のハンドラー
+  const handleFileSelect = (fileId: string) => {
+    const selectedFile = loadedFiles.find(f => f.id === fileId);
+    if (!selectedFile) return;
+
+    setActiveFileId(fileId);
+    setCandlestickData(selectedFile.candlestickData);
+    setAyumiData(selectedFile.ayumiData);
+    setPriceDecimalPlaces(selectedFile.priceDecimalPlaces);
+    setTimeRange(selectedFile.timeRange);
+    setSeekValue(0); // シークバーを最初の位置にリセット
+    setIsControlsActive(true);
+    setIndicator('ファイルを切り替えました');
+    setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
+  };
 
   // 11:30〜12:30の範囲をスキップする関数（timestampはミリ秒単位）
   const skipLunchTime = (timestamp: number, direction: 'forward' | 'backward' = 'forward'): number => {
@@ -536,10 +568,6 @@ export default function Home() {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       if (text) {
-        // ファイル名を保存
-        setFileName(file.name);
-        // テキストエリアに表示
-        setCsvText(text);
         // ファイル内容を直接処理して読み込む
         // 状態更新が非同期のため、直接ファイル内容を処理
         setTimeout(() => {
@@ -547,10 +575,6 @@ export default function Home() {
           const ayumiData = parseCsv(text);
           if (!ayumiData) {
             alert('CSV形式が正しくありません');
-            setIsControlsActive(false);
-            setCandlestickData(undefined);
-            setFileName(null);
-            setCsvText('');
             return;
           }
 
@@ -558,17 +582,29 @@ export default function Home() {
           const { data: oneMinuteData, decimalPlaces, timeRange } = createOneMinuteData(ayumiData);
           if (!oneMinuteData) {
             alert('1分足データの作成に失敗しました');
-            setIsControlsActive(false);
-            setCandlestickData(undefined);
-            setTimeRange(null);
-            setFileName(null);
-            setCsvText('');
             return;
           }
 
-          // 成功したらデータを設定し、コントロールをアクティブにする
+          // 新しいファイル情報を作成
+          const fileId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const newFile: LoadedFile = {
+            id: fileId,
+            fileName: file.name,
+            csvText: text,
+            ayumiData: ayumiData,
+            candlestickData: oneMinuteData,
+            priceDecimalPlaces: decimalPlaces,
+            timeRange: timeRange,
+            loadedAt: Date.now(),
+          };
+
+          // ファイルリストに追加
+          setLoadedFiles((prev) => [...prev, newFile]);
+          
+          // 新しく読み込んだファイルをアクティブにする
+          setActiveFileId(fileId);
           setCandlestickData(oneMinuteData);
-          setAyumiData(ayumiData); // 元の歩み値データも保持
+          setAyumiData(ayumiData);
           setPriceDecimalPlaces(decimalPlaces);
           setTimeRange(timeRange);
           setSeekValue(0); // シークバーを最初の位置にリセット
@@ -1075,19 +1111,31 @@ export default function Home() {
           {/* 右側：テキストエリア */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col">
-              {fileName && (
-                <div className="mb-2">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    読み込んだファイル:
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 break-all">
-                    {fileName}
-                  </p>
-                </div>
-              )}
+              {/* ファイル選択UI */}
+              <div className="mb-4">
+                <select
+                  value={activeFileId || ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleFileSelect(e.target.value);
+                    }
+                  }}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {loadedFiles.length === 0 ? (
+                    <option value="">ファイルが読み込まれていません</option>
+                  ) : (
+                    loadedFiles.map((file) => (
+                      <option key={file.id} value={file.id}>
+                        {file.fileName}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
               <textarea
                 className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
-                placeholder="ファイルをアップロードすると、読み込んだファイルの内容が表示されます"
+                placeholder="ファイルを選択すると、読み込んだファイルの内容が表示されます"
                 value={csvText}
                 readOnly
               />
@@ -1102,7 +1150,7 @@ export default function Home() {
                 onClick={handleUploadClick}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
               >
-                アップロード
+                ファイル選択
               </button>
             </div>
           </div>
@@ -1116,7 +1164,7 @@ export default function Home() {
           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
             <p>1. 歩み値データの読み込み方法：</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>「アップロード」ボタンをクリックしてCSVファイルを選択（自動で読み込まれます）</li>
+              <li>「ファイル選択」ボタンをクリックしてCSVファイルを選択（自動で読み込まれます）</li>
               <li>読み込んだファイルの内容は右上のテキストエリアに表示されます</li>
             </ul>
             <p>2. コントロールボタンで時間を操作できます：</p>
