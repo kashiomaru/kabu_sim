@@ -9,6 +9,9 @@ interface CandlestickData {
   high: number;
   low: number;
   close: number;
+  color?: string; // 個別のローソク足の色（ドージ用）
+  borderColor?: string; // 個別のローソク足のボーダー色（ドージ用）
+  wickColor?: string; // 個別のローソク足のヒゲの色（ドージ用）
 }
 
 interface AyumiData {
@@ -473,6 +476,40 @@ export default function Home() {
         return timeA - timeB;
       });
 
+    // ドージ（始値=終値）の場合、前のローソク足の色を継承
+    // upColorとdownColorを取得（page.tsxで設定されている値を使用）
+    const upColor = '#FF0000'; // 陽線の色（赤）
+    const downColor = '#00FFFF'; // 陰線の色（シアン）
+    
+    for (let i = 0; i < result.length; i++) {
+      const candle = result[i];
+      // ドージ（始値=終値）を検出
+      if (Math.abs(candle.open - candle.close) < 0.0001) { // 浮動小数点の誤差を考慮
+        // 前のローソク足を探す
+        let previousCandle: CandlestickData | null = null;
+        for (let j = i - 1; j >= 0; j--) {
+          // 前のローソク足がドージでない場合、それを使用
+          if (Math.abs(result[j].open - result[j].close) >= 0.0001) {
+            previousCandle = result[j];
+            break;
+          }
+        }
+        
+        // 前のローソク足が見つかった場合、その色を継承
+        if (previousCandle) {
+          const isPreviousUp = previousCandle.close > previousCandle.open;
+          candle.color = isPreviousUp ? upColor : downColor;
+          candle.borderColor = isPreviousUp ? upColor : downColor;
+          candle.wickColor = isPreviousUp ? upColor : downColor;
+        } else {
+          // 前のローソク足が見つからない場合（最初のローソク足がドージ）、デフォルトで陽線として扱う
+          candle.color = upColor;
+          candle.borderColor = upColor;
+          candle.wickColor = upColor;
+        }
+      }
+    }
+
     // 時間範囲を計算
     let timeRange: { min: number; max: number } | null = null;
     if (result.length > 0) {
@@ -824,13 +861,55 @@ export default function Home() {
     const high = Math.max(...prices);
     const low = Math.min(...prices);
     
-    return {
+    const candle: CandlestickData = {
       time: currentMinuteStartTimestamp, // 現在の分の開始時刻
       open,
       high,
       low,
       close,
     };
+    
+    // ドージ（始値=終値）の場合、前のローソク足の色を継承
+    if (Math.abs(candle.open - candle.close) < 0.0001) { // 浮動小数点の誤差を考慮
+      // 前のローソク足を探す（完成した1分足データから）
+      if (candlestickData && candlestickData.length > 0) {
+        // 現在の分より前の最後のローソク足を探す
+        let previousCandle: CandlestickData | null = null;
+        for (let i = candlestickData.length - 1; i >= 0; i--) {
+          const prevTimeValue = candlestickData[i].time;
+          const prevTime: number = typeof prevTimeValue === 'number' ? prevTimeValue : 0;
+          if (prevTime < currentMinuteStartTimestamp) {
+            // 前のローソク足がドージでない場合、それを使用
+            if (Math.abs(candlestickData[i].open - candlestickData[i].close) >= 0.0001) {
+              previousCandle = candlestickData[i];
+              break;
+            }
+          }
+        }
+        
+        // 前のローソク足が見つかった場合、その色を継承
+        if (previousCandle) {
+          const upColor = '#FF0000'; // 陽線の色（赤）
+          const downColor = '#00FFFF'; // 陰線の色（シアン）
+          const isPreviousUp = previousCandle.close > previousCandle.open;
+          candle.color = isPreviousUp ? upColor : downColor;
+          candle.borderColor = isPreviousUp ? upColor : downColor;
+          candle.wickColor = isPreviousUp ? upColor : downColor;
+        } else {
+          // 前のローソク足が見つからない場合、デフォルトで陽線として扱う
+          candle.color = '#FF0000';
+          candle.borderColor = '#FF0000';
+          candle.wickColor = '#FF0000';
+        }
+      } else {
+        // 完成した1分足データがない場合、デフォルトで陽線として扱う
+        candle.color = '#FF0000';
+        candle.borderColor = '#FF0000';
+        candle.wickColor = '#FF0000';
+      }
+    }
+    
+    return candle;
   };
 
   // シークバーの時刻に合わせて1分足データをフィルタリングする関数

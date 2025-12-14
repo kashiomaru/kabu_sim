@@ -9,6 +9,9 @@ interface CandlestickData {
   high: number;
   low: number;
   close: number;
+  color?: string; // 個別のローソク足の色（ドージ用）
+  borderColor?: string; // 個別のローソク足のボーダー色（ドージ用）
+  wickColor?: string; // 個別のローソク足のヒゲの色（ドージ用）
 }
 
 interface CandlestickChartProps {
