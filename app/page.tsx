@@ -28,6 +28,7 @@ export default function Home() {
   const [indicator, setIndicator] = useState('準備中');
   const [seekValue, setSeekValue] = useState(0);
   const [csvText, setCsvText] = useState('');
+  const [fileName, setFileName] = useState<string | null>(null); // 読み込んだファイル名
   const [candlestickData, setCandlestickData] = useState<CandlestickData[] | undefined>(undefined);
   const [ayumiData, setAyumiData] = useState<AyumiData[] | null>(null); // 元の歩み値データを保持
   const [isControlsActive, setIsControlsActive] = useState(false);
@@ -535,6 +536,8 @@ export default function Home() {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       if (text) {
+        // ファイル名を保存
+        setFileName(file.name);
         // テキストエリアに表示
         setCsvText(text);
         // ファイル内容を直接処理して読み込む
@@ -546,6 +549,8 @@ export default function Home() {
             alert('CSV形式が正しくありません');
             setIsControlsActive(false);
             setCandlestickData(undefined);
+            setFileName(null);
+            setCsvText('');
             return;
           }
 
@@ -556,6 +561,8 @@ export default function Home() {
             setIsControlsActive(false);
             setCandlestickData(undefined);
             setTimeRange(null);
+            setFileName(null);
+            setCsvText('');
             return;
           }
 
@@ -587,42 +594,6 @@ export default function Home() {
     fileInputRef.current?.click();
   };
 
-  // 読み込みボタンのハンドラー
-  const handleLoad = () => {
-    if (!csvText.trim()) {
-      alert('CSVデータを入力してください');
-      return;
-    }
-
-    // CSVをパース
-    const ayumiData = parseCsv(csvText);
-    if (!ayumiData) {
-      alert('CSV形式が正しくありません');
-      setIsControlsActive(false);
-      setCandlestickData(undefined);
-      return;
-    }
-
-    // 1分足データを作成
-    const { data: oneMinuteData, decimalPlaces, timeRange } = createOneMinuteData(ayumiData);
-    if (!oneMinuteData) {
-      alert('1分足データの作成に失敗しました');
-      setIsControlsActive(false);
-      setCandlestickData(undefined);
-      setTimeRange(null);
-      return;
-    }
-
-    // 成功したらデータを設定し、コントロールをアクティブにする
-    setCandlestickData(oneMinuteData);
-    setAyumiData(ayumiData); // 元の歩み値データも保持
-    setPriceDecimalPlaces(decimalPlaces);
-    setTimeRange(timeRange);
-    setSeekValue(0); // シークバーを最初の位置にリセット
-    setIsControlsActive(true);
-    setIndicator('データ読み込み完了');
-    setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
-  };
 
   // シークバーの値から現在のデータポイントのインデックスを取得する関数
   const getCurrentDataIndex = (): number => {
@@ -1104,11 +1075,21 @@ export default function Home() {
           {/* 右側：テキストエリア */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col">
+              {fileName && (
+                <div className="mb-2">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    読み込んだファイル:
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 break-all">
+                    {fileName}
+                  </p>
+                </div>
+              )}
               <textarea
                 className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
-                placeholder="歩み値（csv）をペースト"
+                placeholder="ファイルをアップロードすると、読み込んだファイルの内容が表示されます"
                 value={csvText}
-                onChange={(e) => setCsvText(e.target.value)}
+                readOnly
               />
               <input
                 type="file"
@@ -1119,15 +1100,9 @@ export default function Home() {
               />
               <button 
                 onClick={handleUploadClick}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-2"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
               >
                 アップロード
-              </button>
-              <button 
-                onClick={handleLoad}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                読み込み
               </button>
             </div>
           </div>
@@ -1139,10 +1114,10 @@ export default function Home() {
             使用方法
           </h3>
           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-            <p>1. 歩み値データの読み込み方法（いずれか）：</p>
+            <p>1. 歩み値データの読み込み方法：</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li>「アップロード」ボタンをクリックしてCSVファイルを選択（自動で読み込まれます）</li>
-              <li>右上のテキストエリアに歩み値データ（CSV形式）をペーストして「読み込み」ボタンをクリック</li>
+              <li>読み込んだファイルの内容は右上のテキストエリアに表示されます</li>
             </ul>
             <p>2. コントロールボタンで時間を操作できます：</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
