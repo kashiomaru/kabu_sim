@@ -51,11 +51,68 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
   const speedMenuRef = useRef<HTMLDivElement | null>(null); // 速度倍率メニューの参照
   const [reloadKey, setReloadKey] = useState(0); // CSV再読み込み用のキー
+  const tableScrollRef = useRef<HTMLDivElement | null>(null); // テーブルスクロールコンテナの参照
+  const [scrollTop, setScrollTop] = useState(0); // スクロール位置
+  const [containerHeight, setContainerHeight] = useState(0); // コンテナの高さ
 
   // アクティブファイルのデータを取得
   const activeFile = loadedFiles.find(f => f.id === activeFileId) || null;
   const csvText = activeFile?.csvText || '';
   const fileName = activeFile?.fileName || null;
+
+  // 仮想スクロール用の定数
+  const ROW_HEIGHT = 32; // 1行の高さ（px）
+  const OVERSCAN = 10; // 表示領域外にレンダリングする行数（上下に余裕を持たせる）
+
+  // 仮想スクロール: 表示すべき行の範囲を計算
+  const getVisibleRange = (containerHeight: number, dataLength: number) => {
+    if (dataLength === 0) {
+      return { start: 0, end: 0 };
+    }
+
+    // コンテナの高さが取得できない場合（初期レンダリング時など）、デフォルトの表示範囲を返す
+    if (containerHeight === 0) {
+      const defaultVisibleCount = 50; // デフォルトで50行表示
+      return { start: 0, end: Math.min(dataLength, defaultVisibleCount + OVERSCAN) };
+    }
+
+    const visibleStart = Math.floor(scrollTop / ROW_HEIGHT);
+    const visibleCount = Math.ceil(containerHeight / ROW_HEIGHT);
+    const start = Math.max(0, visibleStart - OVERSCAN);
+    const end = Math.min(dataLength, visibleStart + visibleCount + OVERSCAN);
+
+    return { start, end };
+  };
+
+  // スクロールイベントハンドラー
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  };
+
+  // コンテナのサイズを監視して更新
+  useEffect(() => {
+    const updateContainerHeight = () => {
+      if (tableScrollRef.current) {
+        setContainerHeight(tableScrollRef.current.clientHeight);
+      }
+    };
+
+    // 初期サイズを取得
+    updateContainerHeight();
+
+    // ResizeObserverでサイズ変更を監視
+    const resizeObserver = new ResizeObserver(() => {
+      updateContainerHeight();
+    });
+
+    if (tableScrollRef.current) {
+      resizeObserver.observe(tableScrollRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [activeFileId]); // ファイルが切り替わった時も再計算
 
   // ファイル選択のハンドラー
   const handleFileSelect = (fileId: string) => {
@@ -1133,10 +1190,10 @@ export default function Home() {
           </div>
 
           {/* 右側：テキストエリア */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col">
+          <div className="lg:col-span-1 flex flex-col min-h-0 h-full">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col overflow-hidden">
               {/* ファイル選択UI */}
-              <div className="mb-4">
+              <div className="mb-4 flex-shrink-0">
                 <select
                   value={activeFileId || ''}
                   onChange={(e) => {
@@ -1157,25 +1214,89 @@ export default function Home() {
                   )}
                 </select>
               </div>
-              <textarea
-                className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto mb-4"
-                placeholder="ファイルを選択すると、読み込んだファイルの内容が表示されます"
-                value={csvText}
-                readOnly
-              />
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".csv"
-                className="hidden"
-              />
-              <button 
-                onClick={handleUploadClick}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                ファイル選択
-              </button>
+              {/* テーブル表示 */}
+              {activeFile && activeFile.ayumiData.length > 0 ? (
+                <div className="flex-1 min-h-0 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden flex flex-col">
+                  <div 
+                    ref={tableScrollRef}
+                    className="h-full overflow-y-auto overscroll-contain"
+                    onScroll={handleScroll}
+                  >
+                    <table className="w-full text-sm table-fixed">
+                      <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">日付</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">時間</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">約定値</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">出来高</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800">
+                        {(() => {
+                          const currentHeight = containerHeight || tableScrollRef.current?.clientHeight || 0;
+                          const { start, end } = getVisibleRange(currentHeight, activeFile.ayumiData.length);
+                          const visibleData = activeFile.ayumiData.slice(start, end);
+                          const totalHeight = activeFile.ayumiData.length * ROW_HEIGHT;
+                          const offsetY = start * ROW_HEIGHT;
+
+                          return (
+                            <>
+                              {/* 上部のプレースホルダー */}
+                              {start > 0 && (
+                                <tr>
+                                  <td colSpan={4} style={{ height: offsetY, padding: 0 }} />
+                                </tr>
+                              )}
+                              {/* 表示すべき行 */}
+                              {visibleData.map((row, index) => (
+                                <tr 
+                                  key={start + index} 
+                                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  style={{ height: ROW_HEIGHT }}
+                                >
+                                  <td className="px-3 py-1 text-gray-900 dark:text-gray-100 truncate">{row.date}</td>
+                                  <td className="px-3 py-1 text-gray-900 dark:text-gray-100">{row.time}</td>
+                                  <td className="px-3 py-1 text-right text-gray-900 dark:text-gray-100 font-mono">
+                                    {row.price.toFixed(row.priceDecimalPlaces)}
+                                  </td>
+                                  <td className="px-3 py-1 text-right text-gray-900 dark:text-gray-100 font-mono">
+                                    {row.volume.toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))}
+                              {/* 下部のプレースホルダー */}
+                              {end < activeFile.ayumiData.length && (
+                                <tr>
+                                  <td colSpan={4} style={{ height: totalHeight - (end * ROW_HEIGHT), padding: 0 }} />
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 min-h-0 flex items-center justify-center text-gray-500 dark:text-gray-400 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg">
+                  <p className="text-center px-4">ファイルを選択すると、読み込んだファイルの内容が表示されます</p>
+                </div>
+              )}
+              <div className="flex-shrink-0">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".csv"
+                  className="hidden"
+                />
+                <button 
+                  onClick={handleUploadClick}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+                >
+                  ファイル選択
+                </button>
+              </div>
             </div>
           </div>
         </div>
