@@ -46,7 +46,7 @@ export default function Home() {
   const [priceDecimalPlaces, setPriceDecimalPlaces] = useState<number>(2); // デフォルトは2桁
   const [timeRange, setTimeRange] = useState<{ min: number; max: number } | null>(null); // 時間範囲（Unixタイムスタンプ）
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null); // 再生タイマーの参照
-  const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 速度倍率（x1, x2, x3, x5, x10, x30, x60）
+  const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 速度倍率（x0.1, x1, x2, x3, x5, x10, x30, x60）
   const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false); // 速度倍率ドロップダウンの開閉状態
   const fileInputRef = useRef<HTMLInputElement | null>(null); // ファイル入力の参照
   const speedMenuRef = useRef<HTMLDivElement | null>(null); // 速度倍率メニューの参照
@@ -308,6 +308,24 @@ export default function Home() {
     const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
     setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
     setIndicator('秒数リセット');
+  };
+
+  const handleResetTenths = () => {
+    if (!isControlsActive || !candlestickData || candlestickData.length === 0) return;
+    
+    const currentTimestamp = getCurrentTimestamp(); // ミリ秒単位
+    
+    // 現在の時刻からミリ秒部分を.0にリセット（ミリ秒を0に設定）
+    const currentDate = new Date(currentTimestamp); // ミリ秒単位なのでそのまま使用
+    const seconds = currentDate.getUTCSeconds();
+    // ミリ秒部分を0にリセット（.0にリセット）
+    currentDate.setUTCSeconds(seconds, 0);
+    const newTimestamp = currentDate.getTime(); // ミリ秒単位で返す
+    
+    // 新しい時刻に対応するシークバーの値を計算
+    const newSeekValue = getSeekValueFromTimestamp(newTimestamp);
+    setSeekValue(Math.max(0, Math.min(100, newSeekValue)));
+    setIndicator('ミリ秒リセット');
   };
 
   // CSVをパースする関数
@@ -680,20 +698,15 @@ export default function Home() {
     // Unixタイムスタンプ（ミリ秒）をDateオブジェクトに変換
     const date = new Date(currentTime);
     
-    // 00:00:00.0形式でフォーマット（ミリ秒の下2桁が00の場合は非表示）
+    // 00:00:00.0形式でフォーマット（小数点第1位まで固定表示）
     const hours = String(date.getUTCHours()).padStart(2, '0');
     const minutes = String(date.getUTCMinutes()).padStart(2, '0');
     const seconds = String(date.getUTCSeconds()).padStart(2, '0');
     const milliseconds = date.getUTCMilliseconds();
     
-    // ミリ秒の下2桁が00の場合は.0だけ表示、それ以外は.000形式で表示
-    if (milliseconds % 100 === 0) {
-      const tenths = Math.floor(milliseconds / 100);
-      return `${hours}:${minutes}:${seconds}.${tenths}`;
-    } else {
-      const millisecondsStr = String(milliseconds).padStart(3, '0');
-      return `${hours}:${minutes}:${seconds}.${millisecondsStr}`;
-    }
+    // ミリ秒を小数点第1位（0-9）に変換して固定表示
+    const tenths = Math.floor(milliseconds / 100);
+    return `${hours}:${minutes}:${seconds}.${tenths}`;
   };
 
   // 時刻からシークバーの値を計算する関数（timestampはミリ秒単位）
@@ -1077,7 +1090,7 @@ export default function Home() {
                   </button>
                   {isSpeedMenuOpen && isControlsActive && (
                     <div className="absolute bottom-full left-0 mb-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10 w-12">
-                      {[1, 2, 3, 5, 10, 30, 60].map((multiplier) => (
+                      {[0.1, 1, 2, 3, 5, 10, 30, 60].map((multiplier) => (
                         <button
                           key={multiplier}
                           onClick={() => handleSpeedMultiplierSelect(multiplier)}
@@ -1103,6 +1116,17 @@ export default function Home() {
                   }`}
                 >
                   00
+                </button>
+                <button
+                  onClick={handleResetTenths}
+                  disabled={!isControlsActive}
+                  className={`font-semibold py-2 px-3 rounded-lg transition-colors duration-200 text-sm w-12 h-10 flex items-center justify-center ${
+                    isControlsActive
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  .0
                 </button>
               </div>
             </div>
