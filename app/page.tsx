@@ -61,7 +61,7 @@ export default function Home() {
   const fileName = activeFile?.fileName || null;
 
   // 仮想スクロール用の定数
-  const ROW_HEIGHT = 32; // 1行の高さ（px）
+  const ROW_HEIGHT = 28; // 1行の高さ（px）
   const OVERSCAN = 10; // 表示領域外にレンダリングする行数（上下に余裕を持たせる）
 
   // 仮想スクロール: 表示すべき行の範囲を計算
@@ -72,7 +72,7 @@ export default function Home() {
 
     // コンテナの高さが取得できない場合（初期レンダリング時など）、デフォルトの表示範囲を返す
     if (containerHeight === 0) {
-      const defaultVisibleCount = 50; // デフォルトで50行表示
+      const defaultVisibleCount = 70; // デフォルトで70行表示
       return { start: 0, end: Math.min(dataLength, defaultVisibleCount + OVERSCAN) };
     }
 
@@ -1247,21 +1247,40 @@ export default function Home() {
                                 </tr>
                               )}
                               {/* 表示すべき行 */}
-                              {visibleData.map((row, index) => (
-                                <tr 
-                                  key={start + index} 
-                                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                                  style={{ height: ROW_HEIGHT }}
-                                >
-                                  <td className="px-3 py-1 text-gray-900 dark:text-gray-100">{row.time}</td>
-                                  <td className="px-3 py-1 text-right text-gray-900 dark:text-gray-100 font-mono">
-                                    {row.price.toFixed(row.priceDecimalPlaces)}
-                                  </td>
-                                  <td className="px-3 py-1 text-right text-gray-900 dark:text-gray-100 font-mono">
-                                    {row.volume.toLocaleString()}
-                                  </td>
-                                </tr>
-                              ))}
+                              {visibleData.map((row, index) => {
+                                const currentIndex = start + index;
+                                const previousRow = currentIndex > 0 ? activeFile.ayumiData[currentIndex - 1] : null;
+                                
+                                // 約定値の色を決定
+                                let priceColor = 'text-white'; // デフォルトは白
+                                if (previousRow) {
+                                  if (row.price > previousRow.price) {
+                                    priceColor = 'text-[#FF0000]'; // 陽線の色（赤）
+                                  } else if (row.price < previousRow.price) {
+                                    priceColor = 'text-[#00FFFF]'; // 陰線の色（シアン）
+                                  } else {
+                                    priceColor = 'text-white'; // 同値は白
+                                  }
+                                } else {
+                                  priceColor = 'text-white'; // 最初の行は白
+                                }
+
+                                return (
+                                  <tr 
+                                    key={start + index} 
+                                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    style={{ height: ROW_HEIGHT }}
+                                  >
+                                    <td className={`px-3 py-1 ${priceColor}`}>{row.time}</td>
+                                    <td className={`px-3 py-1 text-right font-mono ${priceColor}`}>
+                                      {row.price.toFixed(row.priceDecimalPlaces)}
+                                    </td>
+                                    <td className={`px-3 py-1 text-right font-mono ${priceColor}`}>
+                                      {row.volume.toLocaleString()}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                               {/* 下部のプレースホルダー */}
                               {end < activeFile.ayumiData.length && (
                                 <tr>
