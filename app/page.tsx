@@ -1219,16 +1219,15 @@ export default function Home() {
                 <div className="flex-1 min-h-0 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden flex flex-col">
                   <div 
                     ref={tableScrollRef}
-                    className="h-full overflow-y-auto overscroll-contain"
+                    className="h-full overflow-y-auto overscroll-contain pr-4"
                     onScroll={handleScroll}
                   >
                     <table className="w-full text-sm table-fixed">
                       <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                         <tr>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">日付</th>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">時間</th>
-                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">約定値</th>
-                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/4">出来高</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">時間</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">約定値</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">出来高</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800">
@@ -1244,7 +1243,7 @@ export default function Home() {
                               {/* 上部のプレースホルダー */}
                               {start > 0 && (
                                 <tr>
-                                  <td colSpan={4} style={{ height: offsetY, padding: 0 }} />
+                                  <td colSpan={3} style={{ height: offsetY, padding: 0 }} />
                                 </tr>
                               )}
                               {/* 表示すべき行 */}
@@ -1254,7 +1253,6 @@ export default function Home() {
                                   className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                                   style={{ height: ROW_HEIGHT }}
                                 >
-                                  <td className="px-3 py-1 text-gray-900 dark:text-gray-100 truncate">{row.date}</td>
                                   <td className="px-3 py-1 text-gray-900 dark:text-gray-100">{row.time}</td>
                                   <td className="px-3 py-1 text-right text-gray-900 dark:text-gray-100 font-mono">
                                     {row.price.toFixed(row.priceDecimalPlaces)}
@@ -1267,7 +1265,7 @@ export default function Home() {
                               {/* 下部のプレースホルダー */}
                               {end < activeFile.ayumiData.length && (
                                 <tr>
-                                  <td colSpan={4} style={{ height: totalHeight - (end * ROW_HEIGHT), padding: 0 }} />
+                                  <td colSpan={3} style={{ height: totalHeight - (end * ROW_HEIGHT), padding: 0 }} />
                                 </tr>
                               )}
                             </>
