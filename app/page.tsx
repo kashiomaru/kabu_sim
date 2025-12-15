@@ -61,7 +61,7 @@ export default function Home() {
   const fileName = activeFile?.fileName || null;
 
   // 仮想スクロール用の定数
-  const ROW_HEIGHT = 28; // 1行の高さ（px）
+  const ROW_HEIGHT = 22; // 1行の高さ（px）
   const OVERSCAN = 10; // 表示領域外にレンダリングする行数（上下に余裕を持たせる）
 
   // 仮想スクロール: 表示すべき行の範囲を計算
@@ -72,7 +72,7 @@ export default function Home() {
 
     // コンテナの高さが取得できない場合（初期レンダリング時など）、デフォルトの表示範囲を返す
     if (containerHeight === 0) {
-      const defaultVisibleCount = 70; // デフォルトで70行表示
+      const defaultVisibleCount = 100; // デフォルトで100行表示
       return { start: 0, end: Math.min(dataLength, defaultVisibleCount + OVERSCAN) };
     }
 
