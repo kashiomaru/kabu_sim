@@ -54,6 +54,7 @@ export default function Home() {
   const tableScrollRef = useRef<HTMLDivElement | null>(null); // テーブルスクロールコンテナの参照
   const [scrollTop, setScrollTop] = useState(0); // スクロール位置
   const [containerHeight, setContainerHeight] = useState(0); // コンテナの高さ
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null); // ハイライト中の行のインデックス
 
   // アクティブファイルのデータを取得
   const activeFile = loadedFiles.find(f => f.id === activeFileId) || null;
@@ -128,6 +129,7 @@ export default function Home() {
     setIsControlsActive(true);
     setIndicator('ファイルを切り替えました');
     setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
+    setHighlightedIndex(null); // ハイライトをリセット
   };
 
   // 11:30〜12:30の範囲をスキップする関数（timestampはミリ秒単位）
@@ -714,6 +716,69 @@ export default function Home() {
     return Math.round((maxIndex * seekValue) / 100);
   };
 
+  // 歩み値位置にスクロールする関数
+  const handleScrollToAyumiPosition = () => {
+    if (!isControlsActive || !ayumiData || ayumiData.length === 0 || !tableScrollRef.current) return;
+
+    // 現在の時刻を取得（ミリ秒単位）
+    const currentTimestamp = getCurrentTimestamp();
+
+    // ayumiDataから現在の時刻に対応するデータのインデックスを見つける
+    // ayumiDataは時系列降順（新しいデータが上、古いデータが下）なので、
+    // 現在の時刻以下で最も近い（または一致する）データを探す
+    let targetIndex = -1;
+    for (let i = 0; i < ayumiData.length; i++) {
+      const item = ayumiData[i];
+      
+      // 日付と時間をパース
+      const dateParts = item.date.split('/');
+      const timeParts = item.time.split(':');
+      
+      if (dateParts.length !== 3 || timeParts.length !== 3) continue;
+      
+      const itemYear = parseInt(dateParts[0], 10);
+      const itemMonth = parseInt(dateParts[1], 10) - 1;
+      const itemDay = parseInt(dateParts[2], 10);
+      const itemHour = parseInt(timeParts[0], 10);
+      const itemMinute = parseInt(timeParts[1], 10);
+      const itemSecond = parseInt(timeParts[2], 10);
+      
+      // UTCとしてタイムスタンプを作成（calculateFormingCandleと同じロジック）
+      const itemDateUTC = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
+      const itemTimestampSeconds = Math.floor(itemDateUTC.getTime() / 1000); // 秒単位
+      
+      // ミリ秒情報を取得（なければ0）
+      const itemMillisecond = item.millisecond ?? 0;
+      
+      // ミリ秒を含めたタイムスタンプ（ミリ秒単位）
+      const itemTimestampMs = itemTimestampSeconds * 1000 + itemMillisecond;
+      
+      // 現在の時刻以下で最も近いデータを見つける
+      // ayumiDataは降順なので、最初に見つかった（最も新しい）データを使用
+      if (itemTimestampMs <= currentTimestamp) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    // 見つからなかった場合は最後のデータ（最も古いデータ）を使用
+    if (targetIndex === -1) {
+      targetIndex = ayumiData.length - 1;
+    }
+
+    // ハイライト用のインデックスを設定
+    setHighlightedIndex(targetIndex);
+
+    // スクロール位置を計算（ROW_HEIGHT * targetIndex）
+    const targetScrollTop = targetIndex * ROW_HEIGHT;
+    
+    // スクロールを実行
+    tableScrollRef.current.scrollTop = targetScrollTop;
+    setScrollTop(targetScrollTop);
+
+    setIndicator('歩み値位置に移動しました');
+  };
+
   // シークバーの値から現在の時刻（Unixタイムスタンプ、ミリ秒単位）を取得する関数
   const getCurrentTimestamp = (): number => {
     if (!candlestickData || candlestickData.length === 0) return 0;
@@ -1278,10 +1343,16 @@ export default function Home() {
                                   priceColor = 'text-white'; // 最初の行は白
                                 }
 
+                                // ハイライト用の背景色を決定
+                                const isHighlighted = highlightedIndex === currentIndex;
+                                const highlightBgClass = isHighlighted 
+                                  ? 'bg-yellow-400 dark:bg-yellow-600' 
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700';
+
                                 return (
                                   <tr 
                                     key={start + index} 
-                                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    className={`border-b border-gray-200 dark:border-gray-700 ${highlightBgClass}`}
                                     style={{ height: ROW_HEIGHT }}
                                   >
                                     <td className={`px-3 py-1 ${priceColor}`}>{row.time}</td>
@@ -1314,9 +1385,7 @@ export default function Home() {
               )}
               <div className="flex-shrink-0">
                 <button 
-                  onClick={() => {
-                    // TODO: 歩み値位置機能を実装
-                  }}
+                  onClick={handleScrollToAyumiPosition}
                   disabled={!isControlsActive}
                   className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors duration-200 ${
                     isControlsActive
