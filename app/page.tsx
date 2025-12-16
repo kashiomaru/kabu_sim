@@ -1194,6 +1194,19 @@ export default function Home() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col overflow-hidden">
               {/* ファイル選択UI */}
               <div className="mb-4 flex-shrink-0">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".csv"
+                  className="hidden"
+                />
+                <button 
+                  onClick={handleUploadClick}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-4"
+                >
+                  ファイル選択
+                </button>
                 <select
                   value={activeFileId || ''}
                   onChange={(e) => {
@@ -1300,18 +1313,18 @@ export default function Home() {
                 </div>
               )}
               <div className="flex-shrink-0">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept=".csv"
-                  className="hidden"
-                />
                 <button 
-                  onClick={handleUploadClick}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+                  onClick={() => {
+                    // TODO: 歩み値位置機能を実装
+                  }}
+                  disabled={!isControlsActive}
+                  className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors duration-200 ${
+                    isControlsActive
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
                 >
-                  ファイル選択
+                  歩み値位置
                 </button>
               </div>
             </div>
