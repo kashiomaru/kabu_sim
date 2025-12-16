@@ -1346,7 +1346,7 @@ export default function Home() {
                                 // ハイライト用の背景色を決定
                                 const isHighlighted = highlightedIndex === currentIndex;
                                 const highlightBgClass = isHighlighted 
-                                  ? 'bg-yellow-400 dark:bg-yellow-600' 
+                                  ? 'bg-yellow-100 dark:bg-yellow-900' 
                                   : 'hover:bg-gray-50 dark:hover:bg-gray-700';
 
                                 return (
