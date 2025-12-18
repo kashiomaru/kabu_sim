@@ -1312,7 +1312,7 @@ export default function Home() {
           <div className="lg:col-span-1 flex flex-col min-h-0 h-full">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col overflow-hidden">
               {/* ファイル選択UI */}
-              <div className="mb-4 flex-shrink-0">
+              <div className="mb-2 flex-shrink-0">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -1322,7 +1322,7 @@ export default function Home() {
                 />
                 <button 
                   onClick={handleUploadClick}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-4"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 mb-2"
                 >
                   ファイル選択
                 </button>
@@ -1348,7 +1348,7 @@ export default function Home() {
               </div>
               {/* テーブル表示 */}
               {activeFile && activeFile.ayumiData.length > 0 ? (
-                <div className="flex-1 min-h-0 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden flex flex-col">
+                <div className="flex-1 min-h-0 mb-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden flex flex-col">
                   <div 
                     ref={tableScrollRef}
                     className="h-full overflow-y-auto overscroll-contain pr-4"
@@ -1446,7 +1446,7 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 min-h-0 flex items-center justify-center text-gray-500 dark:text-gray-400 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg">
+                <div className="flex-1 min-h-0 flex items-center justify-center text-gray-500 dark:text-gray-400 mb-2 border border-gray-300 dark:border-gray-600 rounded-lg">
                   <p className="text-center px-4">ファイルを選択すると、読み込んだファイルの内容が表示されます</p>
                 </div>
               )}
@@ -1460,7 +1460,7 @@ export default function Home() {
                 <button 
                   onClick={handleScrollToAyumiPosition}
                   disabled={!isControlsActive}
-                  className={`flex-1 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 ${
+                  className={`flex-1 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 ${
                     isControlsActive
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
