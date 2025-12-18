@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import CandlestickChart from '@/components/CandlestickChart';
 
 interface CandlestickData {
@@ -751,8 +751,40 @@ export default function Home() {
     return Math.round((maxIndex * seekValue) / 100);
   };
 
-  // 歩み値位置にスクロールする関数
-  const handleScrollToAyumiPosition = () => {
+  // シークバーの値から現在の時刻（Unixタイムスタンプ、ミリ秒単位）を取得する関数
+  const getCurrentTimestamp = (): number => {
+    if (!candlestickData || candlestickData.length === 0) return 0;
+    
+    const dataIndex = getCurrentDataIndex();
+    const currentData = candlestickData[dataIndex];
+    const currentTime = typeof currentData.time === 'number' ? currentData.time : 0;
+    
+    // シークバーの値から秒の部分を計算（データポイント間を補間）
+    if (candlestickData.length === 1) return currentTime * 1000; // ミリ秒単位に変換
+    
+    const maxIndex = candlestickData.length - 1;
+    const exactIndex = (maxIndex * seekValue) / 100;
+    const currentIndex = Math.floor(exactIndex);
+    const nextIndex = Math.min(currentIndex + 1, maxIndex);
+    
+    if (currentIndex === nextIndex) return currentTime * 1000; // ミリ秒単位に変換
+    
+    const currentDataTime = typeof candlestickData[currentIndex].time === 'number' 
+      ? candlestickData[currentIndex].time 
+      : 0;
+    const nextDataTime = typeof candlestickData[nextIndex].time === 'number' 
+      ? candlestickData[nextIndex].time 
+      : 0;
+    
+    // データポイント間を補間（秒単位で計算後、ミリ秒単位に変換）
+    const fraction = exactIndex - currentIndex;
+    const timeDiff = nextDataTime - currentDataTime;
+    const timestampSeconds = currentDataTime + (timeDiff * fraction);
+    return timestampSeconds * 1000; // ミリ秒単位に変換
+  };
+
+  // 歩み値位置にスクロールする関数（スクロール処理のみ、setIndicatorなし）
+  const scrollToAyumiPosition = useCallback(() => {
     if (!isControlsActive || !ayumiData || ayumiData.length === 0 || !tableScrollRef.current) return;
 
     // 現在の時刻を取得（ミリ秒単位）
@@ -847,41 +879,22 @@ export default function Home() {
     // スクロールを実行
     tableScrollRef.current.scrollTop = targetScrollTop;
     setScrollTop(targetScrollTop);
+  }, [isControlsActive, ayumiData, getCurrentTimestamp]);
 
+  // 歩み値位置にスクロールする関数（ボタンクリック時用、setIndicatorあり）
+  const handleScrollToAyumiPosition = () => {
+    scrollToAyumiPosition();
     setIndicator('歩み値位置に移動しました');
   };
 
-  // シークバーの値から現在の時刻（Unixタイムスタンプ、ミリ秒単位）を取得する関数
-  const getCurrentTimestamp = (): number => {
-    if (!candlestickData || candlestickData.length === 0) return 0;
-    
-    const dataIndex = getCurrentDataIndex();
-    const currentData = candlestickData[dataIndex];
-    const currentTime = typeof currentData.time === 'number' ? currentData.time : 0;
-    
-    // シークバーの値から秒の部分を計算（データポイント間を補間）
-    if (candlestickData.length === 1) return currentTime * 1000; // ミリ秒単位に変換
-    
-    const maxIndex = candlestickData.length - 1;
-    const exactIndex = (maxIndex * seekValue) / 100;
-    const currentIndex = Math.floor(exactIndex);
-    const nextIndex = Math.min(currentIndex + 1, maxIndex);
-    
-    if (currentIndex === nextIndex) return currentTime * 1000; // ミリ秒単位に変換
-    
-    const currentDataTime = typeof candlestickData[currentIndex].time === 'number' 
-      ? candlestickData[currentIndex].time 
-      : 0;
-    const nextDataTime = typeof candlestickData[nextIndex].time === 'number' 
-      ? candlestickData[nextIndex].time 
-      : 0;
-    
-    // データポイント間を補間（秒単位で計算後、ミリ秒単位に変換）
-    const fraction = exactIndex - currentIndex;
-    const timeDiff = nextDataTime - currentDataTime;
-    const timestampSeconds = currentDataTime + (timeDiff * fraction);
-    return timestampSeconds * 1000; // ミリ秒単位に変換
-  };
+  // 再生中でチェックボックスがONの時に自動スクロール
+  useEffect(() => {
+    if (isPlaying && isControlsActive && isAyumiPositionCheckboxChecked) {
+      // seekValueが更新されるたびに自動スクロールを実行
+      // 形成中の1分足チャートの計算タイミングと同期
+      scrollToAyumiPosition();
+    }
+  }, [seekValue, isPlaying, isControlsActive, isAyumiPositionCheckboxChecked, scrollToAyumiPosition]);
 
   // シークバーの値から時間を計算する関数
   const getTimeFromSeekValue = (): string => {
