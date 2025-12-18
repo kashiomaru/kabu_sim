@@ -470,10 +470,11 @@ export default function Home() {
       const count = items.length;
       
       // 同じ秒内の歩み値を均等に割り当て
-      // dataは時系列降順なので、itemsも降順（items[0]が最新、items[count-1]が最古）
+      // この時点ではdataは時系列降順（ファイルの順序）なので、itemsも降順（items[0]が最新、items[count-1]が最古）
       // 古いデータに小さいミリ秒を割り当てるため、indexを逆順にする
       // 例：2つの場合、古いデータに0ms、新しいデータに500ms
       // 例：3つの場合、古いデータに0ms、中間に333ms、新しいデータに666ms
+      // 注意：この処理の後、data.reverse()で昇順に変換される
       items.forEach((item, index) => {
         // 逆順のインデックスを使用（古いデータが先に適用されるように）
         const reverseIndex = count - 1 - index;
@@ -481,15 +482,18 @@ export default function Home() {
       });
     }
 
+    // 時系列昇順に変換（古いデータが先、新しいデータが後）
+    data.reverse();
+
     return data;
   };
 
-  // 1分足データを作成する関数（時系列降順を考慮）
+  // 1分足データを作成する関数（時系列昇順を前提）
   const createOneMinuteData = (ayumiData: AyumiData[]): { data: CandlestickData[] | null; decimalPlaces: number; timeRange: { min: number; max: number } | null } => {
     if (ayumiData.length === 0) return { data: null, decimalPlaces: 0, timeRange: null };
 
-    // 時系列降順なので、配列を逆順にして古い順にする
-    const reversedData = [...ayumiData].reverse();
+    // ayumiDataは時系列昇順（古いデータが先、新しいデータが後）なので、そのまま使用
+    const reversedData = ayumiData;
 
     // 最大の小数点桁数を追跡
     let maxDecimalPlaces = 0;
@@ -724,10 +728,10 @@ export default function Home() {
     const currentTimestamp = getCurrentTimestamp();
 
     // ayumiDataから現在の時刻に対応するデータのインデックスを見つける
-    // ayumiDataは時系列降順（新しいデータが上、古いデータが下）なので、
-    // 現在の時刻以下で最も近い（または一致する）データを探す
+    // ayumiDataは時系列昇順（古いデータが先、新しいデータが後）なので、
+    // 現在の時刻以下で最も近い（または一致する）データを後ろから探す
     let targetIndex = -1;
-    for (let i = 0; i < ayumiData.length; i++) {
+    for (let i = ayumiData.length - 1; i >= 0; i--) {
       const item = ayumiData[i];
       
       // 日付と時間をパース
@@ -754,23 +758,25 @@ export default function Home() {
       const itemTimestampMs = itemTimestampSeconds * 1000 + itemMillisecond;
       
       // 現在の時刻以下で最も近いデータを見つける
-      // ayumiDataは降順なので、最初に見つかった（最も新しい）データを使用
+      // ayumiDataは昇順なので、後ろから検索して最初に見つかった（最も新しい）データを使用
       if (itemTimestampMs <= currentTimestamp) {
         targetIndex = i;
         break;
       }
     }
 
-    // 見つからなかった場合は最後のデータ（最も古いデータ）を使用
+    // 見つからなかった場合は最初のデータ（最も古いデータ）を使用
     if (targetIndex === -1) {
-      targetIndex = ayumiData.length - 1;
+      targetIndex = 0;
     }
 
-    // ハイライト用のインデックスを設定
+    // ハイライト用のインデックスを設定（ayumiDataは昇順なので、そのまま使用）
     setHighlightedIndex(targetIndex);
 
-    // スクロール位置を計算（ROW_HEIGHT * targetIndex）
-    const targetScrollTop = targetIndex * ROW_HEIGHT;
+    // スクロール位置を計算
+    // テーブル表示は逆順（新しいデータが上）なので、逆順インデックスに変換
+    const reversedIndex = ayumiData.length - 1 - targetIndex;
+    const targetScrollTop = reversedIndex * ROW_HEIGHT;
     
     // スクロールを実行
     tableScrollRef.current.scrollTop = targetScrollTop;
@@ -950,7 +956,7 @@ export default function Home() {
     if (formingAyumiDataWithIndex.length === 0) return null;
     
     // 時系列順（古い順）にソート、ミリ秒情報も考慮
-    // ayumiDataは時系列降順なので、同じ秒数の場合はoriginalIndexが小さい方が新しいデータ
+    // ayumiDataは時系列昇順なので、同じ秒数の場合はoriginalIndexが小さい方が古いデータ
     // createOneMinuteDataと同じロジックでソートする
     const sortedAyumiData = [...formingAyumiDataWithIndex].sort((a, b) => {
       const datePartsA = a.item.date.split('/');
@@ -983,11 +989,11 @@ export default function Home() {
       
       const timeDiff = timestampA - timestampB;
       
-      // タイムスタンプが同じ場合、元の順序を保持（originalIndexが小さい方が新しいデータなので、降順に並べる）
+      // タイムスタンプが同じ場合、元の順序を保持（originalIndexが小さい方が古いデータなので、昇順に並べる）
       if (timeDiff === 0) {
-        // ayumiDataは時系列降順なので、originalIndexが小さい方が新しい
-        // 時系列順（古い順）にソートするため、originalIndexが大きい方が古い
-        return b.originalIndex - a.originalIndex;
+        // ayumiDataは時系列昇順なので、originalIndexが小さい方が古い
+        // 時系列順（古い順）にソートするため、originalIndexが小さい方が古い
+        return a.originalIndex - b.originalIndex;
       }
       
       return timeDiff;
@@ -1310,10 +1316,12 @@ export default function Home() {
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800">
                         {(() => {
+                          // ayumiDataは時系列昇順（古いデータが先）だが、テーブル表示は逆順（新しいデータが上）にする
+                          const reversedData = [...activeFile.ayumiData].reverse();
                           const currentHeight = containerHeight || tableScrollRef.current?.clientHeight || 0;
-                          const { start, end } = getVisibleRange(currentHeight, activeFile.ayumiData.length);
-                          const visibleData = activeFile.ayumiData.slice(start, end);
-                          const totalHeight = activeFile.ayumiData.length * ROW_HEIGHT;
+                          const { start, end } = getVisibleRange(currentHeight, reversedData.length);
+                          const visibleData = reversedData.slice(start, end);
+                          const totalHeight = reversedData.length * ROW_HEIGHT;
                           const offsetY = start * ROW_HEIGHT;
 
                           return (
@@ -1327,7 +1335,8 @@ export default function Home() {
                               {/* 表示すべき行 */}
                               {visibleData.map((row, index) => {
                                 const currentIndex = start + index;
-                                const previousRow = currentIndex > 0 ? activeFile.ayumiData[currentIndex - 1] : null;
+                                // reversedDataは逆順なので、前の行は次のインデックス
+                                const previousRow = currentIndex < reversedData.length - 1 ? reversedData[currentIndex + 1] : null;
                                 
                                 // 約定値の色を決定
                                 let priceColor = 'text-white'; // デフォルトは白
@@ -1344,7 +1353,11 @@ export default function Home() {
                                 }
 
                                 // ハイライト用の背景色を決定
-                                const isHighlighted = highlightedIndex === currentIndex;
+                                // highlightedIndexはayumiData（昇順）のインデックスなので、reversedData（逆順）のインデックスに変換
+                                const reversedHighlightedIndex = highlightedIndex !== null 
+                                  ? reversedData.length - 1 - highlightedIndex 
+                                  : null;
+                                const isHighlighted = reversedHighlightedIndex === currentIndex;
                                 const highlightBgClass = isHighlighted 
                                   ? 'bg-yellow-100 dark:bg-yellow-900' 
                                   : 'hover:bg-gray-50 dark:hover:bg-gray-700';
@@ -1366,7 +1379,7 @@ export default function Home() {
                                 );
                               })}
                               {/* 下部のプレースホルダー */}
-                              {end < activeFile.ayumiData.length && (
+                              {end < reversedData.length && (
                                 <tr>
                                   <td colSpan={3} style={{ height: totalHeight - (end * ROW_HEIGHT), padding: 0 }} />
                                 </tr>
@@ -1430,7 +1443,7 @@ export default function Home() {
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li>CSV形式で、ヘッダー行に「日付,時間 ,約定値,出来高」が含まれること</li>
               <li>データ行は「日付,時間,約定値,出来高」の形式（例：2025/12/05,15:30:00,258,"230,400"）</li>
-              <li>時系列は降順（新しいデータが上、古いデータが下）</li>
+              <li>時系列は昇順（古いデータが先、新しいデータが後）。テーブル表示は逆順（新しいデータが上）</li>
               <li>出来高はカンマ区切りの数値文字列でも可（例："230,400"）</li>
               <li>歩み値データは1日分のみ保証しています（複数日にまたがるデータは動作を保証しません）</li>
             </ul>
