@@ -65,7 +65,7 @@ export default function Home() {
   const fileName = activeFile?.fileName || null;
 
   // 仮想スクロール用の定数
-  const ROW_HEIGHT = 22; // 1行の高さ（px）
+  const ROW_HEIGHT = 18; // 1行の高さ（px）
   const OVERSCAN = 10; // 表示領域外にレンダリングする行数（上下に余裕を持たせる）
 
   // 仮想スクロール: 表示すべき行の範囲を計算
@@ -1357,9 +1357,9 @@ export default function Home() {
                     <table className="w-full text-sm table-fixed">
                       <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                         <tr>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">時間</th>
-                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">約定値</th>
-                          <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">出来高</th>
+                          <th className="px-3 py-1 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">時間</th>
+                          <th className="px-3 py-1 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">約定値</th>
+                          <th className="px-3 py-1 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-1/3">出来高</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800">
@@ -1422,11 +1422,11 @@ export default function Home() {
                                     className={`border-b border-gray-200 dark:border-gray-700 ${highlightBgClass}`}
                                     style={{ height: ROW_HEIGHT }}
                                   >
-                                    <td className={`px-3 py-1 ${priceColor}`}>{row.time}</td>
-                                    <td className={`px-3 py-1 text-right font-mono ${priceColor}`}>
+                                    <td className={`px-3 py-0.5 ${priceColor}`}>{row.time}</td>
+                                    <td className={`px-3 py-0.5 text-right font-mono ${priceColor}`}>
                                       {row.price.toFixed(row.priceDecimalPlaces)}
                                     </td>
-                                    <td className={`px-3 py-1 text-right font-mono ${priceColor}`}>
+                                    <td className={`px-3 py-0.5 text-right font-mono ${priceColor}`}>
                                       {row.volume.toLocaleString()}
                                     </td>
                                   </tr>
