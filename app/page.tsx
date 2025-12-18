@@ -21,6 +21,7 @@ interface AyumiData {
   volume: number;
   priceDecimalPlaces: number; // 価格の小数点桁数
   millisecond?: number; // 補助的なミリ秒情報（同じ秒内の順序に基づく）
+  timestampMs?: number; // タイムスタンプ（ミリ秒単位、事前計算済み）
 }
 
 interface LoadedFile {
@@ -55,6 +56,7 @@ export default function Home() {
   const [scrollTop, setScrollTop] = useState(0); // スクロール位置
   const [containerHeight, setContainerHeight] = useState(0); // コンテナの高さ
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null); // ハイライト中の行のインデックス
+  const [isAyumiPositionCheckboxChecked, setIsAyumiPositionCheckboxChecked] = useState(false); // 歩み値位置チェックボックスの状態
 
   // アクティブファイルのデータを取得
   const activeFile = loadedFiles.find(f => f.id === activeFileId) || null;
@@ -485,6 +487,32 @@ export default function Home() {
     // 時系列昇順に変換（古いデータが先、新しいデータが後）
     data.reverse();
 
+    // タイムスタンプを事前計算して保存（パフォーマンス改善のため）
+    for (const item of data) {
+      // 日付と時間をパース
+      const dateParts = item.date.split('/');
+      const timeParts = item.time.split(':');
+      
+      if (dateParts.length === 3 && timeParts.length === 3) {
+        const itemYear = parseInt(dateParts[0], 10);
+        const itemMonth = parseInt(dateParts[1], 10) - 1;
+        const itemDay = parseInt(dateParts[2], 10);
+        const itemHour = parseInt(timeParts[0], 10);
+        const itemMinute = parseInt(timeParts[1], 10);
+        const itemSecond = parseInt(timeParts[2], 10);
+        
+        // UTCとしてタイムスタンプを作成
+        const itemDateUTC = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
+        const itemTimestampSeconds = Math.floor(itemDateUTC.getTime() / 1000); // 秒単位
+        
+        // ミリ秒情報を取得（なければ0）
+        const itemMillisecond = item.millisecond ?? 0;
+        
+        // ミリ秒を含めたタイムスタンプ（ミリ秒単位）を保存
+        item.timestampMs = itemTimestampSeconds * 1000 + itemMillisecond;
+      }
+    }
+
     return data;
   };
 
@@ -734,28 +762,11 @@ export default function Home() {
     for (let i = ayumiData.length - 1; i >= 0; i--) {
       const item = ayumiData[i];
       
-      // 日付と時間をパース
-      const dateParts = item.date.split('/');
-      const timeParts = item.time.split(':');
+      // 事前計算されたタイムスタンプを使用（パフォーマンス改善）
+      const itemTimestampMs = item.timestampMs;
       
-      if (dateParts.length !== 3 || timeParts.length !== 3) continue;
-      
-      const itemYear = parseInt(dateParts[0], 10);
-      const itemMonth = parseInt(dateParts[1], 10) - 1;
-      const itemDay = parseInt(dateParts[2], 10);
-      const itemHour = parseInt(timeParts[0], 10);
-      const itemMinute = parseInt(timeParts[1], 10);
-      const itemSecond = parseInt(timeParts[2], 10);
-      
-      // UTCとしてタイムスタンプを作成（calculateFormingCandleと同じロジック）
-      const itemDateUTC = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
-      const itemTimestampSeconds = Math.floor(itemDateUTC.getTime() / 1000); // 秒単位
-      
-      // ミリ秒情報を取得（なければ0）
-      const itemMillisecond = item.millisecond ?? 0;
-      
-      // ミリ秒を含めたタイムスタンプ（ミリ秒単位）
-      const itemTimestampMs = itemTimestampSeconds * 1000 + itemMillisecond;
+      // タイムスタンプが計算されていない場合はスキップ（通常は発生しない）
+      if (itemTimestampMs === undefined) continue;
       
       // 現在の時刻以下で最も近いデータを見つける
       // ayumiDataは昇順なので、後ろから検索して最初に見つかった（最も新しい）データを使用
@@ -902,7 +913,20 @@ export default function Home() {
     const formingAyumiDataWithIndex = ayumiData
       .map((item, index) => ({ item, originalIndex: index }))
       .filter(({ item }) => {
-        // 日付と時間をパース
+        // 事前計算されたタイムスタンプを使用（パフォーマンス改善）
+        const itemTimestampMs = item.timestampMs;
+        
+        // タイムスタンプが計算されていない場合はスキップ（通常は発生しない）
+        if (itemTimestampMs === undefined) return false;
+        
+        // 現在のタイムスタンプから秒とミリ秒を取得
+        const currentSecond = Math.floor(currentTimestamp / 1000);
+        const currentMsInSecond = currentTimestamp % 1000;
+        const itemTimestampSeconds = Math.floor(itemTimestampMs / 1000);
+        const itemMillisecond = itemTimestampMs % 1000;
+        
+        // 歩み値が現在の分に属するかどうかを確認（分単位で比較）
+        // 日付と時間をパースして分の開始時刻を計算
         const dateParts = item.date.split('/');
         const timeParts = item.time.split(':');
         
@@ -913,28 +937,8 @@ export default function Home() {
         const itemDay = parseInt(dateParts[2], 10);
         const itemHour = parseInt(timeParts[0], 10);
         const itemMinute = parseInt(timeParts[1], 10);
-        const itemSecond = parseInt(timeParts[2], 10);
         
-        // createOneMinuteDataと同じロジック：最終的にはUTCとしてタイムスタンプを作成
-        // createOneMinuteDataでは、new Date(year, month, day, hour, minute, second)でローカルタイムゾーンとして解釈しているが、
-        // 最終的にはUTCとしてタイムスタンプを作成している（467行目）
-        // ここでも同じロジックを使う：UTCとしてタイムスタンプを作成
-        const itemDateUTC = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, itemSecond));
-        const itemTimestampSeconds = Math.floor(itemDateUTC.getTime() / 1000); // 秒単位
-        
-        // ミリ秒情報を取得（なければ0）
-        const itemMillisecond = item.millisecond ?? 0;
-        
-        // ミリ秒を含めたタイムスタンプ（ミリ秒単位）
-        const itemTimestampMs = itemTimestampSeconds * 1000 + itemMillisecond;
-        
-        // 現在のタイムスタンプから秒とミリ秒を取得
-        const currentSecond = Math.floor(currentTimestamp / 1000);
-        const currentMsInSecond = currentTimestamp % 1000;
-        const itemSecondValue = itemTimestampSeconds;
-        
-        // 歩み値が現在の分に属するかどうかを確認（分単位で比較）
-        // createOneMinuteDataと同じロジック：UTCとしてタイムスタンプを作成
+        // 分の開始時刻を計算
         const itemMinuteStart = new Date(Date.UTC(itemYear, itemMonth, itemDay, itemHour, itemMinute, 0));
         const itemMinuteStartTimestamp = Math.floor(itemMinuteStart.getTime() / 1000);
         
@@ -944,7 +948,7 @@ export default function Home() {
         }
         
         // 同じ秒内の場合、ミリ秒で比較
-        if (currentSecond === itemSecondValue) {
+        if (currentSecond === itemTimestampSeconds) {
           // 歩み値のミリ秒が現在のミリ秒以下であれば反映される
           return itemMillisecond <= currentMsInSecond;
         }
@@ -959,33 +963,9 @@ export default function Home() {
     // ayumiDataは時系列昇順なので、同じ秒数の場合はoriginalIndexが小さい方が古いデータ
     // createOneMinuteDataと同じロジックでソートする
     const sortedAyumiData = [...formingAyumiDataWithIndex].sort((a, b) => {
-      const datePartsA = a.item.date.split('/');
-      const timePartsA = a.item.time.split(':');
-      const datePartsB = b.item.date.split('/');
-      const timePartsB = b.item.time.split(':');
-      
-      if (datePartsA.length !== 3 || timePartsA.length !== 3) return 0;
-      if (datePartsB.length !== 3 || timePartsB.length !== 3) return 0;
-      
-      const yearA = parseInt(datePartsA[0], 10);
-      const monthA = parseInt(datePartsA[1], 10) - 1;
-      const dayA = parseInt(datePartsA[2], 10);
-      const hourA = parseInt(timePartsA[0], 10);
-      const minuteA = parseInt(timePartsA[1], 10);
-      const secondA = parseInt(timePartsA[2], 10);
-      
-      const yearB = parseInt(datePartsB[0], 10);
-      const monthB = parseInt(datePartsB[1], 10) - 1;
-      const dayB = parseInt(datePartsB[2], 10);
-      const hourB = parseInt(timePartsB[0], 10);
-      const minuteB = parseInt(timePartsB[1], 10);
-      const secondB = parseInt(timePartsB[2], 10);
-      
-      // タイムスタンプを計算（ミリ秒を含む）
-      const dateA = new Date(Date.UTC(yearA, monthA, dayA, hourA, minuteA, secondA));
-      const dateB = new Date(Date.UTC(yearB, monthB, dayB, hourB, minuteB, secondB));
-      const timestampA = dateA.getTime() + (a.item.millisecond ?? 0);
-      const timestampB = dateB.getTime() + (b.item.millisecond ?? 0);
+      // 事前計算されたタイムスタンプを使用（パフォーマンス改善）
+      const timestampA = a.item.timestampMs ?? 0;
+      const timestampB = b.item.timestampMs ?? 0;
       
       const timeDiff = timestampA - timestampB;
       
@@ -1402,11 +1382,17 @@ export default function Home() {
                   <p className="text-center px-4">ファイルを選択すると、読み込んだファイルの内容が表示されます</p>
                 </div>
               )}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isAyumiPositionCheckboxChecked}
+                  onChange={(e) => setIsAyumiPositionCheckboxChecked(e.target.checked)}
+                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
                 <button 
                   onClick={handleScrollToAyumiPosition}
                   disabled={!isControlsActive}
-                  className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors duration-200 ${
+                  className={`flex-1 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 ${
                     isControlsActive
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
