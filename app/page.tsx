@@ -57,6 +57,7 @@ export default function Home() {
   const [containerHeight, setContainerHeight] = useState(0); // コンテナの高さ
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null); // ハイライト中の行のインデックス
   const [isAyumiPositionCheckboxChecked, setIsAyumiPositionCheckboxChecked] = useState(false); // 歩み値位置チェックボックスの状態
+  const [isShadowEnabled, setIsShadowEnabled] = useState(false); // シャドウ表示のON/OFF（デフォルトはOFF）
   const lastAyumiIndexRef = useRef<number | null>(null); // 前回の歩み値位置のインデックス（インクリメンタル検索用）
 
   // アクティブファイルのデータを取得
@@ -1217,7 +1218,7 @@ export default function Home() {
                 <CandlestickChart 
                   height={600} 
                   data={getFilteredCandlestickData()} 
-                  shadowData={getShadowCandlestickData()}
+                  shadowData={isShadowEnabled ? getShadowCandlestickData() : undefined}
                   priceDecimalPlaces={priceDecimalPlaces}
                   upColor="#FF0000"
                   downColor="#00FFFF"
@@ -1229,6 +1230,23 @@ export default function Home() {
                   <p>歩み値データを読み込んでください</p>
                 </div>
               )}
+            </div>
+
+            {/* シャドウON/OFFチェックボックス */}
+            <div className="w-full mb-2 flex items-center">
+              <input
+                type="checkbox"
+                id="shadow-checkbox"
+                checked={isShadowEnabled}
+                onChange={(e) => setIsShadowEnabled(e.target.checked)}
+                className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <label
+                htmlFor="shadow-checkbox"
+                className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+              >
+                シャドウ
+              </label>
             </div>
 
             {/* コントローラー部分 */}
