@@ -57,6 +57,7 @@ export default function Home() {
   const [containerHeight, setContainerHeight] = useState(0); // コンテナの高さ
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null); // ハイライト中の行のインデックス
   const [isAyumiPositionCheckboxChecked, setIsAyumiPositionCheckboxChecked] = useState(false); // 歩み値位置チェックボックスの状態
+  const lastAyumiIndexRef = useRef<number | null>(null); // 前回の歩み値位置のインデックス（インクリメンタル検索用）
 
   // アクティブファイルのデータを取得
   const activeFile = loadedFiles.find(f => f.id === activeFileId) || null;
@@ -132,6 +133,7 @@ export default function Home() {
     setIndicator('ファイルを切り替えました');
     setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
     setHighlightedIndex(null); // ハイライトをリセット
+    lastAyumiIndexRef.current = null; // 前回のインデックスをリセット
   };
 
   // 11:30〜12:30の範囲をスキップする関数（timestampはミリ秒単位）
@@ -720,6 +722,7 @@ export default function Home() {
           setIsControlsActive(true);
           setIndicator('データ読み込み完了');
           setReloadKey((prev) => prev + 1); // 再読み込みキーをインクリメント
+          lastAyumiIndexRef.current = null; // 前回のインデックスをリセット
         }, 0);
       }
     };
@@ -756,23 +759,72 @@ export default function Home() {
     const currentTimestamp = getCurrentTimestamp();
 
     // ayumiDataから現在の時刻に対応するデータのインデックスを見つける
-    // ayumiDataは時系列昇順（古いデータが先、新しいデータが後）なので、
-    // 現在の時刻以下で最も近い（または一致する）データを後ろから探す
+    // インクリメンタル検索：前回のインデックスから前後に検索（パフォーマンス改善）
     let targetIndex = -1;
-    for (let i = ayumiData.length - 1; i >= 0; i--) {
-      const item = ayumiData[i];
+    const lastIndex = lastAyumiIndexRef.current;
+    
+    if (lastIndex !== null && lastIndex >= 0 && lastIndex < ayumiData.length) {
+      // 前回のインデックスから検索を開始
+      const lastItem = ayumiData[lastIndex];
+      const lastTimestampMs = lastItem.timestampMs;
       
-      // 事前計算されたタイムスタンプを使用（パフォーマンス改善）
-      const itemTimestampMs = item.timestampMs;
-      
-      // タイムスタンプが計算されていない場合はスキップ（通常は発生しない）
-      if (itemTimestampMs === undefined) continue;
-      
-      // 現在の時刻以下で最も近いデータを見つける
-      // ayumiDataは昇順なので、後ろから検索して最初に見つかった（最も新しい）データを使用
-      if (itemTimestampMs <= currentTimestamp) {
-        targetIndex = i;
-        break;
+      if (lastTimestampMs !== undefined) {
+        if (lastTimestampMs <= currentTimestamp) {
+          // 前回の位置より進んでいる場合：前回の位置から後ろ（新しい方向）に検索
+          for (let i = lastIndex; i < ayumiData.length; i++) {
+            const item = ayumiData[i];
+            const itemTimestampMs = item.timestampMs;
+            if (itemTimestampMs === undefined) continue;
+            
+            if (itemTimestampMs <= currentTimestamp) {
+              targetIndex = i;
+            } else {
+              // 現在の時刻を超えたら、その前のインデックスが答え
+              break;
+            }
+          }
+          // 最後まで見つかった場合は、最後のインデックスを使用
+          if (targetIndex === -1 && ayumiData.length > 0) {
+            const lastItemCheck = ayumiData[ayumiData.length - 1];
+            if (lastItemCheck.timestampMs !== undefined && lastItemCheck.timestampMs <= currentTimestamp) {
+              targetIndex = ayumiData.length - 1;
+            }
+          }
+        } else {
+          // 前回の位置より戻っている場合：前回の位置から前（古い方向）に検索
+          for (let i = lastIndex; i >= 0; i--) {
+            const item = ayumiData[i];
+            const itemTimestampMs = item.timestampMs;
+            if (itemTimestampMs === undefined) continue;
+            
+            if (itemTimestampMs <= currentTimestamp) {
+              targetIndex = i;
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // インクリメンタル検索で見つからなかった場合、フォールバックで全件検索
+    if (targetIndex === -1) {
+      // ayumiDataは時系列昇順（古いデータが先、新しいデータが後）なので、
+      // 現在の時刻以下で最も近い（または一致する）データを後ろから探す
+      for (let i = ayumiData.length - 1; i >= 0; i--) {
+        const item = ayumiData[i];
+        
+        // 事前計算されたタイムスタンプを使用（パフォーマンス改善）
+        const itemTimestampMs = item.timestampMs;
+        
+        // タイムスタンプが計算されていない場合はスキップ（通常は発生しない）
+        if (itemTimestampMs === undefined) continue;
+        
+        // 現在の時刻以下で最も近いデータを見つける
+        // ayumiDataは昇順なので、後ろから検索して最初に見つかった（最も新しい）データを使用
+        if (itemTimestampMs <= currentTimestamp) {
+          targetIndex = i;
+          break;
+        }
       }
     }
 
@@ -780,6 +832,9 @@ export default function Home() {
     if (targetIndex === -1) {
       targetIndex = 0;
     }
+    
+    // 前回のインデックスを更新
+    lastAyumiIndexRef.current = targetIndex;
 
     // ハイライト用のインデックスを設定（ayumiDataは昇順なので、そのまま使用）
     setHighlightedIndex(targetIndex);
