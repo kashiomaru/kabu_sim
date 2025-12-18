@@ -1335,10 +1335,14 @@ export default function Home() {
                               {/* 表示すべき行 */}
                               {visibleData.map((row, index) => {
                                 const currentIndex = start + index;
-                                // reversedDataは逆順なので、前の行は次のインデックス
+                                // reversedDataは逆順（新しいデータが上）なので、時系列的に前の行（古い行）は次のインデックス
+                                // reversedData[currentIndex] = 現在の行（時系列的に新しい）
+                                // reversedData[currentIndex + 1] = 次の行（時系列的に前の行、古い）
                                 const previousRow = currentIndex < reversedData.length - 1 ? reversedData[currentIndex + 1] : null;
                                 
                                 // 約定値の色を決定
+                                // 現在の価格 > 前の価格 → 上昇 → 赤
+                                // 現在の価格 < 前の価格 → 下降 → シアン
                                 let priceColor = 'text-white'; // デフォルトは白
                                 if (previousRow) {
                                   if (row.price > previousRow.price) {
@@ -1349,7 +1353,9 @@ export default function Home() {
                                     priceColor = 'text-white'; // 同値は白
                                   }
                                 } else {
-                                  priceColor = 'text-white'; // 最初の行は白
+                                  // 表示上の最後の行（一番古いデータ、時系列的に最初）は白
+                                  // これより古いデータがないため、比較対象がない
+                                  priceColor = 'text-white';
                                 }
 
                                 // ハイライト用の背景色を決定
