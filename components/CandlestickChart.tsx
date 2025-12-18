@@ -121,6 +121,10 @@ export default function CandlestickChart({
       wickUpColor: shadowUpColor,
       wickDownColor: shadowDownColor,
       priceLineVisible: false,
+      // オートスケール計算から除外
+      autoscaleInfoProvider: () => null,
+      // Y軸のラベル（最新価格）を表示しない（ラベル表示のために軸が動くのを防ぐ）
+      lastValueVisible: false,
     });
     shadowSeriesRef.current = shadowSeries;
     
@@ -215,7 +219,11 @@ export default function CandlestickChart({
 
   // シャドウデータの更新
   useEffect(() => {
-    if (!shadowSeriesRef.current) return;
+    if (!shadowSeriesRef.current || !chartRef.current) return;
+
+    // シャドウデータを設定する前に、現在の表示範囲を保存
+    const timeScale = chartRef.current.timeScale();
+    const visibleRange = timeScale.getVisibleLogicalRange();
 
     // シャドウデータが提供されている場合のみ表示
     if (shadowData && shadowData.length > 0) {
@@ -223,6 +231,22 @@ export default function CandlestickChart({
     } else {
       // データがない場合は空のデータを設定
       shadowSeriesRef.current.setData([]);
+    }
+
+    // シャドウデータ設定後、表示範囲を復元
+    // 非同期で実行して、データ設定の処理が完了してから復元する
+    if (visibleRange) {
+      // requestAnimationFrameを使用して、次のフレームで復元
+      requestAnimationFrame(() => {
+        if (chartRef.current && visibleRange) {
+          try {
+            chartRef.current.timeScale().setVisibleLogicalRange(visibleRange);
+          } catch (error) {
+            // エラーが発生した場合は無視（範囲が無効な場合など）
+            console.warn('Failed to restore visible range:', error);
+          }
+        }
+      });
     }
   }, [shadowData]);
 
