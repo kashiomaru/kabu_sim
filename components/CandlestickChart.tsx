@@ -16,6 +16,7 @@ interface CandlestickData {
 
 interface CandlestickChartProps {
   data?: CandlestickData[];
+  shadowData?: CandlestickData[]; // シャドウ用の全1分足データ
   height?: number;
   priceDecimalPlaces?: number;
   upColor?: string; // 陽線の色
@@ -26,6 +27,7 @@ interface CandlestickChartProps {
 
 export default function CandlestickChart({ 
   data, 
+  shadowData,
   height = 400,
   priceDecimalPlaces = 2,
   upColor = '#26a69a', // デフォルト: 緑
@@ -36,6 +38,7 @@ export default function CandlestickChart({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const shadowSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null); // シャドウ用シリーズ
   const priceLineRef = useRef<IPriceLine | null>(null);
 
   // チャートの初期化（初回のみ）
@@ -103,7 +106,30 @@ export default function CandlestickChart({
 
     chartRef.current = chart;
 
-    // ローソク足シリーズの追加（初期値）
+    // シャドウ用の色（黒に近い、背景に馴染む色）
+    // 陽線: #FF0000 → #3A2A2A (暗い赤みがかったグレー)
+    // 陰線: #00FFFF → #2A3A3A (暗い青みがかったグレー)
+    const shadowUpColor = '#3A2A2A';
+    const shadowDownColor = '#2A3A3A';
+
+    // シャドウ用シリーズを先に追加（背面に表示される）
+    // シリーズの順序を保つため、常に作成する（データがない場合は空のデータを設定）
+    const shadowSeries = chart.addSeries(CandlestickSeries, {
+      upColor: shadowUpColor,
+      downColor: shadowDownColor,
+      borderVisible: false,
+      wickUpColor: shadowUpColor,
+      wickDownColor: shadowDownColor,
+      priceLineVisible: false,
+    });
+    shadowSeriesRef.current = shadowSeries;
+    
+    // 初期化時にシャドウデータが存在する場合は設定
+    if (shadowData && shadowData.length > 0) {
+      shadowSeries.setData(shadowData as any);
+    }
+
+    // 通常のローソク足シリーズを追加（前面に表示される）
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: upColor,
       downColor: downColor,
@@ -168,6 +194,7 @@ export default function CandlestickChart({
         chartRef.current.remove();
         chartRef.current = null;
         seriesRef.current = null;
+        shadowSeriesRef.current = null;
       }
     };
   }, [height, backgroundColor]);
@@ -186,7 +213,20 @@ export default function CandlestickChart({
     });
   }, [priceDecimalPlaces]);
 
-  // データの更新
+  // シャドウデータの更新
+  useEffect(() => {
+    if (!shadowSeriesRef.current) return;
+
+    // シャドウデータが提供されている場合のみ表示
+    if (shadowData && shadowData.length > 0) {
+      shadowSeriesRef.current.setData(shadowData as any);
+    } else {
+      // データがない場合は空のデータを設定
+      shadowSeriesRef.current.setData([]);
+    }
+  }, [shadowData]);
+
+  // 通常データの更新
   useEffect(() => {
     if (!seriesRef.current) return;
 
