@@ -57,6 +57,7 @@ export default function Home() {
   const [containerHeight, setContainerHeight] = useState(0); // コンテナの高さ
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null); // ハイライト中の行のインデックス
   const [isAyumiPositionCheckboxChecked, setIsAyumiPositionCheckboxChecked] = useState(false); // 歩み値位置チェックボックスの状態
+  const [isShadowEnabled, setIsShadowEnabled] = useState(false); // シャドウ表示のON/OFF（デフォルトはOFF）
   const lastAyumiIndexRef = useRef<number | null>(null); // 前回の歩み値位置のインデックス（インクリメンタル検索用）
 
   // アクティブファイルのデータを取得
@@ -1108,6 +1109,66 @@ export default function Home() {
     return candle;
   };
 
+  // シャドウ用の全1分足データを作成する関数（色を設定）
+  const getShadowCandlestickData = (): CandlestickData[] | undefined => {
+    if (!candlestickData || candlestickData.length === 0) return undefined;
+    
+    // シャドウ用の色（黒に近い、背景に馴染む色）
+    const shadowUpColor = '#3A2A2A'; // 陽線: #FF0000 → #3A2A2A (暗い赤みがかったグレー)
+    const shadowDownColor = '#2A3A3A'; // 陰線: #00FFFF → #2A3A3A (暗い青みがかったグレー)
+    
+    // 全1分足データをコピーして色を設定
+    const shadowData: CandlestickData[] = candlestickData.map((candle, index) => {
+      const shadowCandle: CandlestickData = { ...candle };
+      
+      // ドージ（始値=終値）の判定
+      const isDoji = Math.abs(candle.open - candle.close) < 0.0001;
+      
+      if (isDoji) {
+        // ドージの場合、元のデータに色が設定されていればそれを使用、なければ前のローソク足の色を継承
+        if (candle.color) {
+          // 元の色が陽線か陰線かを判定してシャドウ色を設定
+          // #FF0000は陽線、#00FFFFは陰線
+          const isUp = candle.color === '#FF0000';
+          shadowCandle.color = isUp ? shadowUpColor : shadowDownColor;
+          shadowCandle.borderColor = isUp ? shadowUpColor : shadowDownColor;
+          shadowCandle.wickColor = isUp ? shadowUpColor : shadowDownColor;
+        } else {
+          // 前のローソク足を探す
+          let previousCandle: CandlestickData | null = null;
+          for (let i = index - 1; i >= 0; i--) {
+            if (Math.abs(candlestickData[i].open - candlestickData[i].close) >= 0.0001) {
+              previousCandle = candlestickData[i];
+              break;
+            }
+          }
+          
+          if (previousCandle) {
+            const isPreviousUp = previousCandle.close > previousCandle.open;
+            shadowCandle.color = isPreviousUp ? shadowUpColor : shadowDownColor;
+            shadowCandle.borderColor = isPreviousUp ? shadowUpColor : shadowDownColor;
+            shadowCandle.wickColor = isPreviousUp ? shadowUpColor : shadowDownColor;
+          } else {
+            // 前のローソク足が見つからない場合、デフォルトで陽線として扱う
+            shadowCandle.color = shadowUpColor;
+            shadowCandle.borderColor = shadowUpColor;
+            shadowCandle.wickColor = shadowUpColor;
+          }
+        }
+      } else {
+        // 通常のローソク足（陽線または陰線）
+        const isUp = candle.close > candle.open;
+        shadowCandle.color = isUp ? shadowUpColor : shadowDownColor;
+        shadowCandle.borderColor = isUp ? shadowUpColor : shadowDownColor;
+        shadowCandle.wickColor = isUp ? shadowUpColor : shadowDownColor;
+      }
+      
+      return shadowCandle;
+    });
+    
+    return shadowData;
+  };
+
   // シークバーの時刻に合わせて1分足データをフィルタリングする関数
   const getFilteredCandlestickData = (): CandlestickData[] | undefined => {
     if (!candlestickData || !timeRange) return undefined;
@@ -1157,6 +1218,7 @@ export default function Home() {
                 <CandlestickChart 
                   height={600} 
                   data={getFilteredCandlestickData()} 
+                  shadowData={isShadowEnabled ? getShadowCandlestickData() : undefined}
                   priceDecimalPlaces={priceDecimalPlaces}
                   upColor="#FF0000"
                   downColor="#00FFFF"
@@ -1168,6 +1230,23 @@ export default function Home() {
                   <p>歩み値データを読み込んでください</p>
                 </div>
               )}
+            </div>
+
+            {/* シャドウON/OFFチェックボックス */}
+            <div className="w-full mb-2 flex items-center">
+              <input
+                type="checkbox"
+                id="shadow-checkbox"
+                checked={isShadowEnabled}
+                onChange={(e) => setIsShadowEnabled(e.target.checked)}
+                className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <label
+                htmlFor="shadow-checkbox"
+                className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+              >
+                シャドウ
+              </label>
             </div>
 
             {/* コントローラー部分 */}
