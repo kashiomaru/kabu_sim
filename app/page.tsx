@@ -63,6 +63,7 @@ export default function Home() {
     time: string;
     type: string; // "陽線" | "陰線" | "ドージ"
     length: number; // 長さ（high - low）
+    maxSpeed: number; // 最大速度（1分間内の価格変動の最大速度）
     upperWick: number; // 上ヒゲ長
     body: number; // 本体長
     lowerWick: number; // 下ヒゲ長
@@ -1303,6 +1304,46 @@ export default function Home() {
       // 長さ（high - low）
       const length = candle.high - candle.low;
 
+      // 最大速度を計算（同秒数内での変更価格の最大）
+      let maxSpeed = 0;
+      if (ayumiData && ayumiData.length > 0) {
+        // 該当する1分間の歩み値データを抽出
+        const minuteStartTimestamp = timeValue * 1000; // 秒単位からミリ秒単位に変換
+        const minuteEndTimestamp = minuteStartTimestamp + 60000; // 1分後（60秒 = 60000ミリ秒）
+
+        const minuteAyumiData = ayumiData.filter((item) => {
+          const itemTimestampMs = item.timestampMs;
+          if (itemTimestampMs === undefined) return false;
+          return itemTimestampMs >= minuteStartTimestamp && itemTimestampMs < minuteEndTimestamp;
+        });
+
+        // 秒単位でグループ化
+        const groupedBySecond = new Map<number, number[]>(); // 秒単位のタイムスタンプ -> 価格の配列
+
+        for (const item of minuteAyumiData) {
+          const itemTimestampMs = item.timestampMs;
+          if (itemTimestampMs === undefined) continue;
+          
+          // 秒単位のタイムスタンプを取得（ミリ秒を切り捨て）
+          const secondTimestamp = Math.floor(itemTimestampMs / 1000);
+          
+          if (!groupedBySecond.has(secondTimestamp)) {
+            groupedBySecond.set(secondTimestamp, []);
+          }
+          groupedBySecond.get(secondTimestamp)!.push(item.price);
+        }
+
+        // 各秒内での価格変動の最大値を計算
+        for (const prices of groupedBySecond.values()) {
+          if (prices.length > 0) {
+            const maxPrice = Math.max(...prices);
+            const minPrice = Math.min(...prices);
+            const priceRange = maxPrice - minPrice;
+            maxSpeed = Math.max(maxSpeed, priceRange);
+          }
+        }
+      }
+
       // 上ヒゲ長（high - max(open, close)）
       const upperWick = candle.high - Math.max(candle.open, candle.close);
       
@@ -1316,6 +1357,7 @@ export default function Home() {
         time: timeStr,
         type,
         length,
+        maxSpeed,
         upperWick,
         body,
         lowerWick,
@@ -1357,6 +1399,10 @@ export default function Home() {
         case '長さ':
           aValue = a.length;
           bValue = b.length;
+          break;
+        case '最大速度':
+          aValue = a.maxSpeed;
+          bValue = b.maxSpeed;
           break;
         case '上ヒゲ':
           aValue = a.upperWick;
@@ -1760,6 +1806,7 @@ export default function Home() {
                       <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">時間</th>
                       <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">足</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">長さ</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">最大速度</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">上ヒゲ</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">本体</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">下ヒゲ</th>
@@ -1781,6 +1828,9 @@ export default function Home() {
                             {row.length.toFixed(priceDecimalPlaces)}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
+                            {row.maxSpeed.toFixed(priceDecimalPlaces)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
                             {row.upperWick.toFixed(priceDecimalPlaces)}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
@@ -1793,7 +1843,7 @@ export default function Home() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                        <td colSpan={7} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                           {analysisTableData.length > 0 ? 'フィルター条件に一致するデータがありません' : '解析ボタンを押すとデータが表示されます'}
                         </td>
                       </tr>
@@ -1821,6 +1871,7 @@ export default function Home() {
                   <option value="時間">時間</option>
                   <option value="足">足</option>
                   <option value="長さ">長さ</option>
+                  <option value="最大速度">最大速度</option>
                   <option value="上ヒゲ">上ヒゲ</option>
                   <option value="本体">本体</option>
                   <option value="下ヒゲ">下ヒゲ</option>
