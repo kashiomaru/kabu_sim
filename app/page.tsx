@@ -1741,14 +1741,6 @@ export default function Home() {
 
         {/* 解析エリア */}
         <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-          <div className="mb-4">
-            <button
-              onClick={handleOneMinuteAnalysis}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-            >
-              １分足解析
-            </button>
-          </div>
           <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
             {/* 左側：テキスト表示 */}
             <div className="lg:col-span-2">
@@ -1812,6 +1804,14 @@ export default function Home() {
             </div>
             {/* 右側：フィルターUI */}
             <div className="lg:col-span-1 space-y-4">
+              <div>
+                <button
+                  onClick={handleOneMinuteAnalysis}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 mb-4"
+                >
+                  １分足解析
+                </button>
+              </div>
               <div>
                 <select
                   value={sortBy}
