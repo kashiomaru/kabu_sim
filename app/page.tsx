@@ -58,6 +58,7 @@ export default function Home() {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null); // ハイライト中の行のインデックス
   const [isAyumiPositionCheckboxChecked, setIsAyumiPositionCheckboxChecked] = useState(false); // 歩み値位置チェックボックスの状態
   const [isShadowEnabled, setIsShadowEnabled] = useState(false); // シャドウ表示のON/OFF（デフォルトはOFF）
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false); // 解析モーダルの開閉状態
   const lastAyumiIndexRef = useRef<number | null>(null); // 前回の歩み値位置のインデックス（インクリメンタル検索用）
 
   // アクティブファイルのデータを取得
@@ -1547,6 +1548,17 @@ export default function Home() {
                 >
                   歩み値位置
                 </button>
+                <button 
+                  onClick={() => setIsAnalysisModalOpen(true)}
+                  disabled={!isControlsActive}
+                  className={`flex-1 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 ${
+                    isControlsActive
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  解析
+                </button>
               </div>
             </div>
           </div>
@@ -1609,6 +1621,48 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      {/* 解析モーダル */}
+      {isAnalysisModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* オーバーレイ */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsAnalysisModalOpen(false)}
+          />
+          {/* モーダル本体 */}
+          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setIsAnalysisModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* モーダルのコンテンツエリア */}
+            <div className="text-gray-700 dark:text-gray-300">
+              <div className="mb-4">
+                <button
+                  onClick={() => {}}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  １分足解析
+                </button>
+              </div>
+              <div>
+                <textarea
+                  readOnly
+                  className="w-full h-96 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="解析結果がここに表示されます"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
