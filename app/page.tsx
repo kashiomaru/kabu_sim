@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CandlestickChart from '@/components/CandlestickChart';
 
 interface CandlestickData {
@@ -66,7 +66,12 @@ export default function Home() {
     upperWick: number; // 上ヒゲ長
     body: number; // 本体長
     lowerWick: number; // 下ヒゲ長
-  }>>([]); // 解析結果の表データ
+  }>>([]); // 解析結果の表データ（元データ）
+  const [sortBy, setSortBy] = useState<string>('時間'); // ソート項目
+  const [sortAscending, setSortAscending] = useState<boolean>(true); // 昇順かどうか
+  const [filterUp, setFilterUp] = useState<boolean>(true); // 陽線を表示するか
+  const [filterDown, setFilterDown] = useState<boolean>(true); // 陰線を表示するか
+  const [filterDoji, setFilterDoji] = useState<boolean>(true); // ドージを表示するか
   const lastAyumiIndexRef = useRef<number | null>(null); // 前回の歩み値位置のインデックス（インクリメンタル検索用）
 
   // アクティブファイルのデータを取得
@@ -1320,6 +1325,68 @@ export default function Home() {
     setAnalysisTableData(tableData);
   };
 
+  // フィルタリングとソートを適用したデータを計算
+  const filteredAndSortedTableData = useMemo(() => {
+    // フィルタリング
+    let filtered = analysisTableData.filter((row) => {
+      if (row.type === '陽線' && !filterUp) return false;
+      if (row.type === '陰線' && !filterDown) return false;
+      if (row.type === 'ドージ' && !filterDoji) return false;
+      return true;
+    });
+
+    // ソート
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue: number | string;
+      let bValue: number | string;
+
+      switch (sortBy) {
+        case '時間':
+          // 時間を比較（HH:mm形式を数値に変換）
+          const aTimeParts = a.time.split(':');
+          const bTimeParts = b.time.split(':');
+          aValue = parseInt(aTimeParts[0]) * 60 + parseInt(aTimeParts[1]);
+          bValue = parseInt(bTimeParts[0]) * 60 + parseInt(bTimeParts[1]);
+          break;
+        case '足':
+          // 陽線 > 陰線 > ドージの順
+          const typeOrder: { [key: string]: number } = { '陽線': 0, '陰線': 1, 'ドージ': 2 };
+          aValue = typeOrder[a.type] ?? 2;
+          bValue = typeOrder[b.type] ?? 2;
+          break;
+        case '長さ':
+          aValue = a.length;
+          bValue = b.length;
+          break;
+        case '上ヒゲ':
+          aValue = a.upperWick;
+          bValue = b.upperWick;
+          break;
+        case '本体':
+          aValue = a.body;
+          bValue = b.body;
+          break;
+        case '下ヒゲ':
+          aValue = a.lowerWick;
+          bValue = b.lowerWick;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortAscending ? aValue - bValue : bValue - aValue;
+      } else {
+        // 文字列比較
+        const aStr = String(aValue);
+        const bStr = String(bValue);
+        return sortAscending ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      }
+    });
+
+    return sorted;
+  }, [analysisTableData, sortBy, sortAscending, filterUp, filterDown, filterDoji]);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
@@ -1682,9 +1749,9 @@ export default function Home() {
               １分足解析
             </button>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
             {/* 左側：テキスト表示 */}
-            <div>
+            <div className="lg:col-span-2">
               <textarea
                 ref={analysisTextareaRef}
                 readOnly
@@ -1692,23 +1759,23 @@ export default function Home() {
                 placeholder="解析結果がここに表示されます"
               />
             </div>
-            {/* 右側：表 */}
-            <div className="overflow-auto">
+            {/* 中央：表 */}
+            <div className="lg:col-span-3 overflow-auto">
               <div className="h-96 border border-gray-300 dark:border-gray-600 rounded-lg overflow-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">時間</th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">陽線or陰線</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">足</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">長さ</th>
-                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">上ヒゲ長</th>
-                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">本体長</th>
-                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">下ヒゲ長</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">上ヒゲ</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">本体</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">下ヒゲ</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800">
-                    {analysisTableData.length > 0 ? (
-                      analysisTableData.map((row, index) => (
+                    {filteredAndSortedTableData.length > 0 ? (
+                      filteredAndSortedTableData.map((row, index) => (
                         <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
                           <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.time}</td>
                           <td className={`px-3 py-2 ${
@@ -1735,12 +1802,91 @@ export default function Home() {
                     ) : (
                       <tr>
                         <td colSpan={6} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                          解析ボタンを押すとデータが表示されます
+                          {analysisTableData.length > 0 ? 'フィルター条件に一致するデータがありません' : '解析ボタンを押すとデータが表示されます'}
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            {/* 右側：フィルターUI */}
+            <div className="lg:col-span-1 space-y-4">
+              <div>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="時間">時間</option>
+                  <option value="足">足</option>
+                  <option value="長さ">長さ</option>
+                  <option value="上ヒゲ">上ヒゲ</option>
+                  <option value="本体">本体</option>
+                  <option value="下ヒゲ">下ヒゲ</option>
+                </select>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="sort-order"
+                  checked={sortAscending}
+                  onChange={(e) => setSortAscending(e.target.checked)}
+                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label
+                  htmlFor="sort-order"
+                  className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+                >
+                  昇順
+                </label>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="filter-up"
+                    checked={filterUp}
+                    onChange={(e) => setFilterUp(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label
+                    htmlFor="filter-up"
+                    className="ml-2 text-sm font-medium text-[#FF0000] cursor-pointer"
+                  >
+                    陽線
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="filter-down"
+                    checked={filterDown}
+                    onChange={(e) => setFilterDown(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label
+                    htmlFor="filter-down"
+                    className="ml-2 text-sm font-medium text-[#00FFFF] cursor-pointer"
+                  >
+                    陰線
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="filter-doji"
+                    checked={filterDoji}
+                    onChange={(e) => setFilterDoji(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label
+                    htmlFor="filter-doji"
+                    className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+                  >
+                    ドージ
+                  </label>
+                </div>
               </div>
             </div>
           </div>
