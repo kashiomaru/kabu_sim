@@ -59,6 +59,14 @@ export default function Home() {
   const [isAyumiPositionCheckboxChecked, setIsAyumiPositionCheckboxChecked] = useState(false); // 歩み値位置チェックボックスの状態
   const [isShadowEnabled, setIsShadowEnabled] = useState(false); // シャドウ表示のON/OFF（デフォルトはOFF）
   const analysisTextareaRef = useRef<HTMLTextAreaElement | null>(null); // 解析結果テキストエリアの参照
+  const [analysisTableData, setAnalysisTableData] = useState<Array<{
+    time: string;
+    type: string; // "陽線" | "陰線" | "ドージ"
+    length: number; // 長さ（high - low）
+    upperWick: number; // 上ヒゲ長
+    body: number; // 本体長
+    lowerWick: number; // 下ヒゲ長
+  }>>([]); // 解析結果の表データ
   const lastAyumiIndexRef = useRef<number | null>(null); // 前回の歩み値位置のインデックス（インクリメンタル検索用）
 
   // アクティブファイルのデータを取得
@@ -1267,6 +1275,49 @@ export default function Home() {
     if (analysisTextareaRef.current) {
       analysisTextareaRef.current.value = result;
     }
+
+    // 表のデータを生成
+    const tableData = candlestickData.map((candle) => {
+      // 時間をフォーマット
+      const timeValue = typeof candle.time === 'number' ? candle.time : 0;
+      const date = new Date(timeValue * 1000);
+      const hours = String(date.getUTCHours()).padStart(2, '0');
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
+
+      // 陽線or陰線を判定
+      let type: string;
+      if (Math.abs(candle.close - candle.open) < 0.0001) {
+        type = 'ドージ';
+      } else if (candle.close > candle.open) {
+        type = '陽線';
+      } else {
+        type = '陰線';
+      }
+
+      // 長さ（high - low）
+      const length = candle.high - candle.low;
+
+      // 上ヒゲ長（high - max(open, close)）
+      const upperWick = candle.high - Math.max(candle.open, candle.close);
+      
+      // 本体長（|close - open|）
+      const body = Math.abs(candle.close - candle.open);
+      
+      // 下ヒゲ長（min(open, close) - low）
+      const lowerWick = Math.min(candle.open, candle.close) - candle.low;
+
+      return {
+        time: timeStr,
+        type,
+        length,
+        upperWick,
+        body,
+        lowerWick,
+      };
+    });
+
+    setAnalysisTableData(tableData);
   };
 
   return (
@@ -1631,13 +1682,67 @@ export default function Home() {
               １分足解析
             </button>
           </div>
-          <div>
-            <textarea
-              ref={analysisTextareaRef}
-              readOnly
-              className="w-full h-96 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-              placeholder="解析結果がここに表示されます"
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* 左側：テキスト表示 */}
+            <div>
+              <textarea
+                ref={analysisTextareaRef}
+                readOnly
+                className="w-full h-96 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                placeholder="解析結果がここに表示されます"
+              />
+            </div>
+            {/* 右側：表 */}
+            <div className="overflow-auto">
+              <div className="h-96 border border-gray-300 dark:border-gray-600 rounded-lg overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">時間</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">陽線or陰線</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">長さ</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">上ヒゲ長</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">本体長</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">下ヒゲ長</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800">
+                    {analysisTableData.length > 0 ? (
+                      analysisTableData.map((row, index) => (
+                        <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
+                          <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.time}</td>
+                          <td className={`px-3 py-2 ${
+                            row.type === '陽線' ? 'text-[#FF0000]' : 
+                            row.type === '陰線' ? 'text-[#00FFFF]' : 
+                            'text-gray-500 dark:text-gray-400'
+                          }`}>
+                            {row.type}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
+                            {row.length.toFixed(priceDecimalPlaces)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
+                            {row.upperWick.toFixed(priceDecimalPlaces)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
+                            {row.body.toFixed(priceDecimalPlaces)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
+                            {row.lowerWick.toFixed(priceDecimalPlaces)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                          解析ボタンを押すとデータが表示されます
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
         
