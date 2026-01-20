@@ -67,6 +67,7 @@ export default function Home() {
     upperWick: number; // 上ヒゲ長
     body: number; // 本体長
     lowerWick: number; // 下ヒゲ長
+    maxRise: number; // 安値をつけてからの最大上昇幅
   }>>([]); // 解析結果の表データ（元データ）
   const [sortBy, setSortBy] = useState<string>('時間'); // ソート項目
   const [sortAscending, setSortAscending] = useState<boolean>(true); // 昇順かどうか
@@ -1353,6 +1354,50 @@ export default function Home() {
       // 下ヒゲ長（min(open, close) - low）
       const lowerWick = Math.min(candle.open, candle.close) - candle.low;
 
+      // 安値をつけてからの最大上昇幅を計算
+      let maxRise = 0;
+      if (ayumiData && ayumiData.length > 0) {
+        // 該当する1分間の歩み値データを抽出
+        const minuteStartTimestamp = timeValue * 1000; // 秒単位からミリ秒単位に変換
+        const minuteEndTimestamp = minuteStartTimestamp + 60000; // 1分後（60秒 = 60000ミリ秒）
+
+        const minuteAyumiData = ayumiData.filter((item) => {
+          const itemTimestampMs = item.timestampMs;
+          if (itemTimestampMs === undefined) return false;
+          return itemTimestampMs >= minuteStartTimestamp && itemTimestampMs < minuteEndTimestamp;
+        });
+
+        // 時系列順にソート（念のため）
+        const sortedAyumiData = [...minuteAyumiData].sort((a, b) => {
+          const timestampA = a.timestampMs ?? 0;
+          const timestampB = b.timestampMs ?? 0;
+          return timestampA - timestampB;
+        });
+
+        if (sortedAyumiData.length > 0) {
+          // 安値（low）を特定
+          const lowPrice = candle.low;
+          
+          // 安値をつけた最初の時点を特定
+          let lowIndex = -1;
+          for (let i = 0; i < sortedAyumiData.length; i++) {
+            if (Math.abs(sortedAyumiData[i].price - lowPrice) < 0.0001) {
+              lowIndex = i;
+              break;
+            }
+          }
+
+          // 安値をつけた時点以降の最大価格を追跡
+          if (lowIndex >= 0 && lowIndex < sortedAyumiData.length - 1) {
+            let maxPriceAfterLow = lowPrice;
+            for (let i = lowIndex + 1; i < sortedAyumiData.length; i++) {
+              maxPriceAfterLow = Math.max(maxPriceAfterLow, sortedAyumiData[i].price);
+            }
+            maxRise = maxPriceAfterLow - lowPrice;
+          }
+        }
+      }
+
       return {
         time: timeStr,
         type,
@@ -1361,6 +1406,7 @@ export default function Home() {
         upperWick,
         body,
         lowerWick,
+        maxRise,
       };
     });
 
@@ -1415,6 +1461,10 @@ export default function Home() {
         case '下ヒゲ':
           aValue = a.lowerWick;
           bValue = b.lowerWick;
+          break;
+        case '最大上昇幅':
+          aValue = a.maxRise;
+          bValue = b.maxRise;
           break;
         default:
           return 0;
@@ -1810,6 +1860,7 @@ export default function Home() {
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">上ヒゲ</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">本体</th>
                       <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">下ヒゲ</th>
+                      <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">最大上昇幅</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800">
@@ -1839,11 +1890,14 @@ export default function Home() {
                           <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
                             {row.lowerWick.toFixed(priceDecimalPlaces)}
                           </td>
+                          <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">
+                            {row.maxRise.toFixed(priceDecimalPlaces)}
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={7} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                        <td colSpan={8} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                           {analysisTableData.length > 0 ? 'フィルター条件に一致するデータがありません' : '解析ボタンを押すとデータが表示されます'}
                         </td>
                       </tr>
@@ -1875,6 +1929,7 @@ export default function Home() {
                   <option value="上ヒゲ">上ヒゲ</option>
                   <option value="本体">本体</option>
                   <option value="下ヒゲ">下ヒゲ</option>
+                  <option value="最大上昇幅">最大上昇幅</option>
                 </select>
               </div>
               <div className="flex items-center">
